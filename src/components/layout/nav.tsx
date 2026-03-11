@@ -20,7 +20,7 @@ export function MainNav() {
   const pathname = usePathname();
 
   return (
-    <header className="bg-gp-smokey text-white">
+    <header className="bg-white border-b">
       <div className="flex h-14 items-center px-6 gap-6">
         <Link href="/" className="flex items-center group">
           <Image
@@ -48,8 +48,8 @@ export function MainNav() {
                 className={cn(
                   "flex items-center gap-2 px-3 py-1.5 text-sm uppercase tracking-wide transition-colors font-[family-name:var(--font-display)]",
                   isActive
-                    ? "text-gp-teal border-b-2 border-gp-teal"
-                    : "text-white/70 hover:text-white"
+                    ? "text-[#66388F] border-b-2 border-[#66388F]"
+                    : "text-[#66388F]/60 hover:text-[#66388F]"
                 )}
               >
                 <Icon className="h-4 w-4" />
