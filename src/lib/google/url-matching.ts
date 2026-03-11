@@ -2,20 +2,28 @@ import { normalizeUrl } from "@/lib/ingestion/normalizer";
 import type { GscPageData } from "@/types";
 
 /**
- * Normalize a GSC URL for matching with crawled URLs.
- * Handles protocol, www, trailing slash, and case differences.
+ * Strips a URL down to a simple comparable key:
+ * lowercase, no protocol, no www, no trailing slash.
  */
-export function normalizeGscUrl(url: string): string {
-  return normalizeUrl(url);
+function toMatchKey(url: string): string {
+  try {
+    const parsed = new URL(
+      url.match(/^https?:\/\//i) ? url : `https://${url}`
+    );
+    const bare = parsed.hostname.replace(/^www\./, "").toLowerCase();
+    const path = parsed.pathname.replace(/\/+$/, "") || "";
+    const search = parsed.search || "";
+    return bare + path + search;
+  } catch {
+    return url.toLowerCase().replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/+$/, "");
+  }
 }
 
 /**
  * Match GSC page data to crawled URLs.
  *
- * Returns:
- * - matched: URLs found in both GSC and crawl
- * - gscOnly: URLs in GSC but not crawled (may be indexed but not reachable via crawl)
- * - crawlOnly: URLs crawled but not in GSC (may not be indexed)
+ * The matched map uses the ORIGINAL DB URL as the key (not re-normalized),
+ * so callers can safely use it for DB lookups.
  */
 export function matchGscToCrawlUrls(
   gscData: GscPageData[],
@@ -25,64 +33,34 @@ export function matchGscToCrawlUrls(
   gscOnly: GscPageData[];
   crawlOnly: string[];
 } {
-  // Build a map of normalized crawl URLs
-  const crawlUrlSet = new Set<string>();
-  const crawlNormalizedToOriginal = new Map<string, string>();
-
+  // Build a map from match key → original DB URL
+  const keyToDbUrl = new Map<string, string>();
   for (const url of crawledUrls) {
-    const normalized = normalizeUrl(url);
-    crawlUrlSet.add(normalized);
-    crawlNormalizedToOriginal.set(normalized, url);
-  }
-
-  // Match GSC data
-  const matched = new Map<string, GscPageData>();
-  const gscOnly: GscPageData[] = [];
-  const matchedCrawlUrls = new Set<string>();
-
-  for (const gscRow of gscData) {
-    const normalizedGsc = normalizeGscUrl(gscRow.page);
-
-    if (crawlUrlSet.has(normalizedGsc)) {
-      matched.set(normalizedGsc, gscRow);
-      matchedCrawlUrls.add(normalizedGsc);
-    } else {
-      // Try with/without trailing slash
-      const withSlash = normalizedGsc.endsWith("/")
-        ? normalizedGsc
-        : normalizedGsc + "/";
-      const withoutSlash = normalizedGsc.endsWith("/")
-        ? normalizedGsc.slice(0, -1)
-        : normalizedGsc;
-
-      if (crawlUrlSet.has(withSlash)) {
-        matched.set(withSlash, gscRow);
-        matchedCrawlUrls.add(withSlash);
-      } else if (crawlUrlSet.has(withoutSlash)) {
-        matched.set(withoutSlash, gscRow);
-        matchedCrawlUrls.add(withoutSlash);
-      } else {
-        // Try www/non-www variants
-        const urlObj = new URL(normalizedGsc);
-        const altHostname = urlObj.hostname.startsWith("www.")
-          ? urlObj.hostname.slice(4)
-          : `www.${urlObj.hostname}`;
-        urlObj.hostname = altHostname;
-        const altUrl = normalizeUrl(urlObj.toString());
-
-        if (crawlUrlSet.has(altUrl)) {
-          matched.set(altUrl, gscRow);
-          matchedCrawlUrls.add(altUrl);
-        } else {
-          gscOnly.push(gscRow);
-        }
-      }
+    const key = toMatchKey(url);
+    if (!keyToDbUrl.has(key)) {
+      keyToDbUrl.set(key, url);
     }
   }
 
-  // Find crawl URLs not in GSC
-  const crawlOnly = Array.from(crawlUrlSet).filter(
-    (url) => !matchedCrawlUrls.has(url)
+  const matched = new Map<string, GscPageData>();
+  const gscOnly: GscPageData[] = [];
+  const matchedKeys = new Set<string>();
+
+  for (const gscRow of gscData) {
+    const key = toMatchKey(gscRow.page);
+
+    const dbUrl = keyToDbUrl.get(key);
+    if (dbUrl && !matchedKeys.has(key)) {
+      matched.set(dbUrl, gscRow);
+      matchedKeys.add(key);
+    } else if (!matchedKeys.has(key)) {
+      gscOnly.push(gscRow);
+    }
+  }
+
+  // Find crawl URLs not matched by any GSC row
+  const crawlOnly = crawledUrls.filter(
+    (url) => !matchedKeys.has(toMatchKey(url))
   );
 
   return { matched, gscOnly, crawlOnly };
