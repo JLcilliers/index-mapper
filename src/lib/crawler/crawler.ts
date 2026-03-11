@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { extractSeoFields } from "./extractor";
 import { fetchRobotsTxt, isPathAllowed } from "./robots";
+import { parseSitemap } from "./sitemap";
 import { normalizeUrl } from "@/lib/ingestion/normalizer";
 import { detectPageType } from "@/lib/classification/page-types";
 
@@ -38,10 +39,57 @@ export async function initializeCrawl(options: CrawlOptions) {
     },
   });
 
-  // Also add sitemap URLs if found in robots.txt
-  // (We don't parse sitemaps yet, just note them)
+  // Parse sitemaps and seed queue with discovered URLs
+  const bareDomain = domain.replace(/^www\./, "");
+  let sitemapUrlsAdded = 0;
 
-  return { robotsRules: robotsData.rules, sitemaps: robotsData.sitemaps };
+  // If no sitemaps in robots.txt, try common sitemap locations
+  const sitemapUrls = robotsData.sitemaps.length > 0
+    ? robotsData.sitemaps
+    : [`https://${domain}/sitemap.xml`, `https://${domain}/sitemap_index.xml`];
+
+  for (const sitemapUrl of sitemapUrls) {
+    const urls = await parseSitemap(sitemapUrl);
+
+    // Filter to same domain and normalize
+    const samedomainUrls = urls
+      .filter((u) => {
+        try {
+          const h = new URL(u).hostname.replace(/^www\./, "");
+          return h === bareDomain;
+        } catch { return false; }
+      })
+      .filter((u) => {
+        const lower = u.toLowerCase();
+        return !lower.match(/\.(jpg|jpeg|png|gif|svg|webp|pdf|css|js|ico|woff|woff2|ttf|eot|mp4|mp3|zip|rar)$/);
+      })
+      .map(normalizeUrl);
+
+    if (samedomainUrls.length > 0) {
+      // Check which URLs are already in the queue
+      const existing = await prisma.crawlQueue.findMany({
+        where: { projectRunId, url: { in: samedomainUrls } },
+        select: { url: true },
+      });
+      const existingSet = new Set(existing.map((e) => e.url));
+
+      const toCreate = samedomainUrls
+        .filter((u) => !existingSet.has(u))
+        .map((u) => ({
+          projectRunId,
+          url: u,
+          depth: 1, // Sitemap URLs treated as depth 1
+          status: "pending",
+        }));
+
+      if (toCreate.length > 0) {
+        await prisma.crawlQueue.createMany({ data: toCreate, skipDuplicates: true });
+        sitemapUrlsAdded += toCreate.length;
+      }
+    }
+  }
+
+  return { robotsRules: robotsData.rules, sitemaps: robotsData.sitemaps, sitemapUrlsAdded };
 }
 
 /**
