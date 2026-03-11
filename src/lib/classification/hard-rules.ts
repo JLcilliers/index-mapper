@@ -21,13 +21,15 @@ const RULE_EVALUATORS: Record<string, RuleEvaluator> = {
 
   pageType_is_legal: (r) => r.pageType === "legal_page",
 
-  canonical_points_elsewhere: (r) =>
-    r.canonical !== null &&
-    r.canonical !== undefined &&
-    r.canonical !== "" &&
-    r.canonical !== r.url &&
-    !r.canonical.endsWith(r.url) &&
-    !r.url.endsWith(r.canonical),
+  canonical_points_elsewhere: (r) => {
+    if (!r.canonical || r.canonical === "" || r.canonical === r.url) return false;
+    // Normalize trailing slashes and protocol for comparison
+    const normalize = (u: string) =>
+      u.replace(/^https?:\/\//, "").replace(/\/+$/, "").toLowerCase();
+    const normCanonical = normalize(r.canonical);
+    const normUrl = normalize(r.url);
+    return normCanonical !== normUrl;
+  },
 
   media_attachment_no_value: (r) =>
     r.pageType === "media_attachment" &&
