@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -21,13 +22,15 @@ export function MainNav() {
   return (
     <header className="bg-gp-smokey text-white">
       <div className="flex h-14 items-center px-6 gap-6">
-        <Link href="/" className="flex items-center gap-3 group">
-          <div className="h-8 w-8 bg-gp-teal flex items-center justify-center">
-            <span className="text-white text-xs font-bold font-[family-name:var(--font-display)]">IM</span>
-          </div>
-          <span className="font-[family-name:var(--font-display)] text-lg uppercase tracking-wider text-white">
-            Index Mapper
-          </span>
+        <Link href="/" className="flex items-center group">
+          <Image
+            src="https://res.cloudinary.com/dovgh19xr/image/upload/v1773243238/GPMLogo_Linear_uld33t.png"
+            alt="Golden Proportions Marketing"
+            width={200}
+            height={40}
+            className="h-8 w-auto"
+            priority
+          />
         </Link>
 
         <nav className="flex items-center gap-1 ml-6">
