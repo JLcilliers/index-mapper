@@ -26,9 +26,9 @@ export async function GET(request: NextRequest) {
       `${baseUrl}/settings?success=${encodeURIComponent("Google account connected successfully")}`
     );
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Connection failed";
+    console.error("Google OAuth callback error:", err);
     return NextResponse.redirect(
-      `${baseUrl}/settings?error=${encodeURIComponent(message)}`
+      `${baseUrl}/settings?error=${encodeURIComponent("Failed to connect Google account. Check server logs for details.")}`
     );
   }
 }

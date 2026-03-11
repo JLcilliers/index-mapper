@@ -2,7 +2,10 @@ import { prisma } from "@/lib/db";
 
 const GOOGLE_AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
 const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
-const SCOPES = ["https://www.googleapis.com/auth/webmasters.readonly"];
+const SCOPES = [
+  "https://www.googleapis.com/auth/webmasters.readonly",
+  "https://www.googleapis.com/auth/userinfo.email",
+];
 
 function getRedirectUri() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
@@ -56,6 +59,7 @@ export async function exchangeCodeForTokens(code: string) {
     }
   );
   const userInfo = await userInfoResponse.json();
+  const email = userInfo.email || "unknown";
 
   // Store connection (upsert — only one connection needed)
   const connection = await prisma.googleConnection.upsert({
@@ -64,14 +68,14 @@ export async function exchangeCodeForTokens(code: string) {
       accessToken: data.access_token,
       refreshToken: data.refresh_token || undefined,
       tokenExpiry: new Date(Date.now() + data.expires_in * 1000),
-      email: userInfo.email,
+      email,
     },
     create: {
       id: "agency-connection",
       accessToken: data.access_token,
       refreshToken: data.refresh_token,
       tokenExpiry: new Date(Date.now() + data.expires_in * 1000),
-      email: userInfo.email,
+      email,
     },
   });
 
