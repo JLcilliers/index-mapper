@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { listGscProperties, fetchGscPageData, getDateRange } from "@/lib/google/search-console";
+import { listGscProperties, fetchGscPageDataAllVariants, getDateRange } from "@/lib/google/search-console";
 import { matchGscToCrawlUrls } from "@/lib/google/url-matching";
 import { normalizeUrl } from "@/lib/ingestion/normalizer";
 
@@ -53,8 +53,8 @@ export async function GET(request: NextRequest) {
       // Get date range
       const dates = getDateRange(range, customStart, customEnd);
 
-      // Fetch GSC data
-      const gscData = await fetchGscPageData(
+      // Fetch GSC data from all property variants (http, https, www, non-www)
+      const gscData = await fetchGscPageDataAllVariants(
         run.client.gscProperty,
         dates.startDate,
         dates.endDate

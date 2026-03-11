@@ -88,6 +88,91 @@ export async function fetchGscPageData(
 }
 
 /**
+ * Given a GSC property URL, generate all protocol/www variants
+ * and the sc-domain: variant. Returns only properties that exist
+ * in the user's account.
+ */
+export async function findAllPropertyVariants(
+  gscProperty: string
+): Promise<string[]> {
+  const allProperties = await listGscProperties();
+  const allUrls = new Set(allProperties.map((p) => p.siteUrl));
+
+  // Extract bare domain from the selected property
+  let bareDomain: string;
+  if (gscProperty.startsWith("sc-domain:")) {
+    bareDomain = gscProperty.replace("sc-domain:", "").replace(/\/+$/, "");
+  } else {
+    try {
+      const parsed = new URL(gscProperty);
+      bareDomain = parsed.hostname.replace(/^www\./, "");
+    } catch {
+      return [gscProperty];
+    }
+  }
+
+  // Generate all possible variants
+  const candidates = [
+    `sc-domain:${bareDomain}`,
+    `http://${bareDomain}/`,
+    `https://${bareDomain}/`,
+    `http://www.${bareDomain}/`,
+    `https://www.${bareDomain}/`,
+  ];
+
+  // Return only variants that exist in the user's account
+  const found = candidates.filter((c) => allUrls.has(c));
+
+  // If nothing matched (shouldn't happen), fall back to original
+  return found.length > 0 ? found : [gscProperty];
+}
+
+/**
+ * Fetch GSC data from all property variants and merge by URL.
+ * For duplicate URLs across properties, keeps the row with higher clicks.
+ */
+export async function fetchGscPageDataAllVariants(
+  gscProperty: string,
+  startDate: string,
+  endDate: string
+): Promise<GscPageData[]> {
+  const variants = await findAllPropertyVariants(gscProperty);
+
+  // If sc-domain is available, just use that — it covers everything
+  const scDomain = variants.find((v) => v.startsWith("sc-domain:"));
+  if (scDomain) {
+    return fetchGscPageData(scDomain, startDate, endDate);
+  }
+
+  // Otherwise fetch from all URL-prefix variants and merge
+  const allData = new Map<string, GscPageData>();
+
+  for (const variant of variants) {
+    try {
+      const rows = await fetchGscPageData(variant, startDate, endDate);
+      for (const row of rows) {
+        // Normalize the page URL for deduplication
+        const key = row.page
+          .replace(/^https?:\/\//, "")
+          .replace(/^www\./, "")
+          .replace(/\/+$/, "")
+          .toLowerCase();
+
+        const existing = allData.get(key);
+        if (!existing || row.clicks > existing.clicks) {
+          allData.set(key, row);
+        }
+      }
+    } catch (err) {
+      // Skip variants that fail (e.g., unverified)
+      console.warn(`GSC fetch failed for ${variant}:`, err);
+    }
+  }
+
+  return Array.from(allData.values());
+}
+
+/**
  * Calculate date range strings for GSC queries.
  * GSC data has ~3 day delay, so end date is today - 3 days.
  */
