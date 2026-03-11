@@ -50,6 +50,9 @@ function scoreBusinessValue(record: UrlRecord): number {
     service_subpage: 60,
     location_page: 55,
     legal_page: 50,
+    utility_page: 40,
+    faq_page: 45,
+    evergreen_guide: 50,
   };
 
   if (pageType in strategicTypes) {
@@ -84,6 +87,9 @@ function scoreContentQuality(record: UrlRecord): number {
 function scoreBacklinkValue(record: UrlRecord): number {
   const backlinks = record.backlinks ?? 0;
   const referringDomains = record.referringDomains ?? 0;
+
+  // If no backlink data was fetched at all, give neutral score instead of penalizing
+  if (record.backlinks === null && record.referringDomains === null) return 40;
 
   if (backlinks === 0 && referringDomains === 0) return 0;
 
@@ -163,9 +169,13 @@ function scoreTechnicalHealth(record: UrlRecord): number {
   if (record.isIndexable === true) score += 10;
   else if (record.isIndexable === false) score -= 20;
 
-  // Canonical consistency
+  // Canonical consistency (normalize trailing slashes before comparing)
   if (record.canonical && record.canonical !== record.url) {
-    score -= 15;
+    const normCanonical = record.canonical.replace(/\/+$/, "").toLowerCase();
+    const normUrl = record.url.replace(/\/+$/, "").toLowerCase();
+    if (normCanonical !== normUrl) {
+      score -= 15;
+    }
   }
 
   return clamp(score, 0, 100);

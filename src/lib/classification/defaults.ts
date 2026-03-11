@@ -85,8 +85,8 @@ export const DEFAULT_RULE_CONFIG: RuleConfigData = {
     technicalHealth: 0.1,
   },
   scoringThresholds: {
-    keepIndexed: 65,
-    keepIndexedImprove: 45,
+    keepIndexed: 60,
+    keepIndexedImprove: 35,
   },
   manualReviewTriggers: [
     {
