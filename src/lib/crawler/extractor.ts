@@ -38,6 +38,7 @@ export function extractSeoFields(
 
   // Internal and external links
   const baseUrl = new URL(url);
+  const baseBare = baseUrl.hostname.replace(/^www\./, "");
   const internalLinks: string[] = [];
   const externalLinks: string[] = [];
 
@@ -58,7 +59,9 @@ export function extractSeoFields(
       resolved.hash = "";
       const resolvedUrl = resolved.toString();
 
-      if (resolved.hostname === baseUrl.hostname) {
+      // Match www and non-www variants as internal
+      const resolvedBare = resolved.hostname.replace(/^www\./, "");
+      if (resolvedBare === baseBare) {
         if (!internalLinks.includes(resolvedUrl)) {
           internalLinks.push(resolvedUrl);
         }
