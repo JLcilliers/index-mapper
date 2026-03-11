@@ -46,7 +46,7 @@ const TRIGGER_EVALUATORS: Record<string, TriggerEvaluator> = {
   },
 
   score_near_threshold: (_r, totalScore, thresholds) => {
-    const margin = 5;
+    const margin = 3;
     return (
       Math.abs(totalScore - thresholds.keepIndexed) <= margin ||
       Math.abs(totalScore - thresholds.keepIndexedImprove) <= margin
@@ -56,7 +56,7 @@ const TRIGGER_EVALUATORS: Record<string, TriggerEvaluator> = {
   is_location_page: (r) => r.pageType === "location_page",
 
   has_impressions_no_clicks: (r) =>
-    (r.impressions !== null && r.impressions !== undefined && r.impressions > 50) &&
+    (r.impressions !== null && r.impressions !== undefined && r.impressions > 200) &&
     (!r.clicks || r.clicks === 0),
 
   service_page_low_traffic: (r) =>

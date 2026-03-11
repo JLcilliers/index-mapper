@@ -211,14 +211,11 @@ export function classifyUrl(
     config.scoringThresholds
   );
 
-  // Step 4: Classify by score
-  let recommendation: IndexabilityRecommendation;
-  if (reviewTriggers.length > 0) {
-    // If any review triggers fire, override to MANUAL_REVIEW
-    recommendation = "MANUAL_REVIEW_REQUIRED";
-  } else {
-    recommendation = classifyByScore(totalScore, config.scoringThresholds);
-  }
+  // Step 4: Classify by score — review triggers no longer override the recommendation
+  const recommendation: IndexabilityRecommendation = classifyByScore(
+    totalScore,
+    config.scoringThresholds
+  );
 
   // Step 5: Compute confidence
   const confidenceScore = computeConfidence(
@@ -228,12 +225,9 @@ export function classifyUrl(
     reviewTriggers
   );
 
-  // Additional review trigger: low confidence
+  // Low confidence adds a review flag but does NOT override the recommendation
   if (confidenceScore < 0.5 && !reviewTriggers.includes("Classification confidence is too low for auto-action")) {
     reviewTriggers.push("Classification confidence is too low for auto-action");
-    if (recommendation !== "MANUAL_REVIEW_REQUIRED") {
-      recommendation = "MANUAL_REVIEW_REQUIRED";
-    }
   }
 
   // Step 6: Generate reasons

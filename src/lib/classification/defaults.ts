@@ -115,7 +115,7 @@ export const DEFAULT_RULE_CONFIG: RuleConfigData = {
       name: "Insufficient data",
       condition: "low_data_completeness",
       reason: "Insufficient data to make a confident recommendation",
-      enabled: true,
+      enabled: false,
     },
     {
       id: "mr_conflicting_signals",
@@ -136,7 +136,7 @@ export const DEFAULT_RULE_CONFIG: RuleConfigData = {
       name: "Score near threshold",
       condition: "score_near_threshold",
       reason: "Score is close to a classification boundary",
-      enabled: true,
+      enabled: false,
     },
     {
       id: "mr_location_page",

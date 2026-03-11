@@ -56,8 +56,8 @@ export default async function RunDetailPage({
   };
 
   const canCrawl = run.status === "draft";
-  const canFetchGsc = ["crawl_complete", "classified", "in_review"].includes(run.status);
-  const canClassify = summary.totalCount > 0 && ["crawl_complete", "merging", "fetching_gsc"].includes(run.status);
+  const canFetchGsc = ["crawl_complete", "merging", "classified", "in_review", "completed"].includes(run.status);
+  const canClassify = summary.totalCount > 0 && ["crawl_complete", "merging", "fetching_gsc", "classified", "in_review"].includes(run.status);
   const hasData = summary.totalCount > 0;
 
   return (
