@@ -1,13 +1,19 @@
+import { Suspense } from "react";
 import { prisma } from "@/lib/db";
 import { DEFAULT_RULE_CONFIG } from "@/lib/classification/defaults";
+import { getGoogleConnectionStatus } from "@/lib/google/auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { GscConnectionCard } from "@/components/gsc-connection-card";
 import type { RuleConfigData } from "@/types";
 
+export const dynamic = "force-dynamic";
+
 export default async function SettingsPage() {
-  const defaultConfig = await prisma.ruleConfig.findFirst({
-    where: { isDefault: true },
-  });
+  const [defaultConfig, gscStatus] = await Promise.all([
+    prisma.ruleConfig.findFirst({ where: { isDefault: true } }),
+    getGoogleConnectionStatus(),
+  ]);
 
   const config: RuleConfigData = defaultConfig
     ? {
@@ -24,9 +30,14 @@ export default async function SettingsPage() {
       <div>
         <h1 className="text-3xl font-light uppercase tracking-wider">Settings</h1>
         <p className="text-muted-foreground">
-          Classification rules and scoring configuration
+          Google Search Console connection and classification rules
         </p>
       </div>
+
+      {/* Google Search Console Connection */}
+      <Suspense fallback={null}>
+        <GscConnectionCard connection={gscStatus} />
+      </Suspense>
 
       {/* Score Weights */}
       <Card>
