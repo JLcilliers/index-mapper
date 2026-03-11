@@ -1,14 +1,10 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
 import { projectRunSchema } from "@/types/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function createRun(data: unknown) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-
   const validated = projectRunSchema.parse(data);
 
   const run = await prisma.projectRun.create({
@@ -27,9 +23,6 @@ export async function updateRunStatus(
   runId: string,
   status: "draft" | "processing" | "classified" | "in_review" | "completed"
 ) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-
   const run = await prisma.projectRun.update({
     where: { id: runId },
     data: { status },
@@ -41,9 +34,6 @@ export async function updateRunStatus(
 }
 
 export async function deleteRun(runId: string) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-
   const run = await prisma.projectRun.findUnique({
     where: { id: runId },
     select: { clientId: true },

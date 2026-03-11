@@ -7,7 +7,6 @@ import {
   LayoutDashboard,
   Users,
   Settings,
-  LogOut,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -55,15 +54,6 @@ export function MainNav() {
             );
           })}
         </nav>
-
-        <div className="ml-auto flex items-center gap-2">
-          <form action="/api/auth/signout" method="POST">
-            <Button variant="ghost" size="sm" type="submit" className="gap-2">
-              <LogOut className="h-4 w-4" />
-              Sign out
-            </Button>
-          </form>
-        </div>
       </div>
     </header>
   );

@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { parseCSV } from "@/lib/ingestion/parser";
 import { mergeRecords } from "@/lib/ingestion/merger";
 import { computeDerivedFields } from "@/lib/ingestion/derived-fields";
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
     const formData = await request.formData();
     const projectRunId = formData.get("projectRunId") as string;

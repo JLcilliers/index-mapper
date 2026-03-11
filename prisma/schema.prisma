@@ -8,18 +8,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String
-  passwordHash  String
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  clients          Client[]
-  reviewDecisions  ReviewDecision[]
-}
-
 model Client {
   id        String   @id @default(cuid())
   name      String
@@ -29,9 +17,6 @@ model Client {
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  createdById String
-  createdBy   User   @relation(fields: [createdById], references: [id])
 
   projectRuns ProjectRun[]
 
@@ -155,9 +140,6 @@ model ReviewDecision {
   notes                  String?
   targetUrl              String?
   reviewedAt             DateTime @default(now())
-
-  reviewedById String
-  reviewedBy   User   @relation(fields: [reviewedById], references: [id])
 
   urlRecordId String    @unique
   urlRecord   UrlRecord @relation(fields: [urlRecordId], references: [id], onDelete: Cascade)

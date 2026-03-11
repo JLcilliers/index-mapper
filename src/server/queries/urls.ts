@@ -69,11 +69,7 @@ export async function getUrlRecord(id: string) {
   return prisma.urlRecord.findUnique({
     where: { id },
     include: {
-      reviewDecision: {
-        include: {
-          reviewedBy: { select: { name: true, email: true } },
-        },
-      },
+      reviewDecision: true,
       projectRun: {
         include: {
           client: { select: { name: true, domain: true } },

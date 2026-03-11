@@ -1,16 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { classifyUrl } from "@/lib/classification/engine";
 import { DEFAULT_RULE_CONFIG } from "@/lib/classification/defaults";
 import type { RuleConfigData } from "@/types";
 
 export async function POST(request: NextRequest) {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-
   try {
     const { projectRunId } = await request.json();
 

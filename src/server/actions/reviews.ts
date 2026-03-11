@@ -1,14 +1,10 @@
 "use server";
 
 import { prisma } from "@/lib/db";
-import { auth } from "@/lib/auth";
 import { reviewDecisionSchema } from "@/types/schemas";
 import { revalidatePath } from "next/cache";
 
 export async function submitReview(data: unknown) {
-  const session = await auth();
-  if (!session?.user?.id) throw new Error("Unauthorized");
-
   const validated = reviewDecisionSchema.parse(data);
 
   const urlRecord = await prisma.urlRecord.findUnique({
@@ -31,14 +27,12 @@ export async function submitReview(data: unknown) {
       reason: validated.reason,
       notes: validated.notes,
       targetUrl: validated.targetUrl,
-      reviewedById: session.user.id,
     },
     update: {
       finalClassification: validated.finalClassification,
       reason: validated.reason,
       notes: validated.notes,
       targetUrl: validated.targetUrl,
-      reviewedById: session.user.id,
       reviewedAt: new Date(),
     },
   });
