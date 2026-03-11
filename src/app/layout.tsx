@@ -1,18 +1,12 @@
 import type { Metadata } from "next";
-import { Oswald, Roboto } from "next/font/google";
+import { Poppins } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import "./globals.css";
 
-const roboto = Roboto({
+const poppins = Poppins({
   variable: "--font-sans",
   subsets: ["latin"],
-  weight: ["300", "400", "500", "700"],
-});
-
-const oswald = Oswald({
-  variable: "--font-display",
-  subsets: ["latin"],
-  weight: ["300", "400"],
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -28,7 +22,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${roboto.variable} ${oswald.variable} antialiased`}
+        className={`${poppins.variable} antialiased`}
       >
         {children}
         <Toaster />

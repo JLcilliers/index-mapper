@@ -74,7 +74,7 @@ export default async function RunDetailPage({
       <div className="flex items-start justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-light uppercase tracking-wider">{run.name}</h1>
+            <h1 className="text-3xl font-semibold">{run.name}</h1>
             <Badge className={statusColors[run.status] || ""}>
               {run.status.replace(/_/g, " ")}
             </Badge>

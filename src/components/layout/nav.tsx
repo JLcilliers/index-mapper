@@ -21,7 +21,7 @@ export function MainNav() {
 
   return (
     <header className="bg-white border-b">
-      <div className="flex h-14 items-center px-6 gap-6">
+      <div className="flex h-16 items-center px-6 gap-6">
         <Link href="/" className="flex items-center group">
           <Image
             src="https://res.cloudinary.com/dovgh19xr/image/upload/v1773243238/GPMLogo_Linear_uld33t.png"
@@ -46,13 +46,13 @@ export function MainNav() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  "flex items-center gap-2 px-3 py-1.5 text-sm uppercase tracking-wide transition-colors font-[family-name:var(--font-display)]",
+                  "flex items-center gap-2 px-4 py-2 text-base font-medium tracking-wide transition-colors",
                   isActive
                     ? "text-[#66388F] border-b-2 border-[#66388F]"
                     : "text-[#66388F]/60 hover:text-[#66388F]"
                 )}
               >
-                <Icon className="h-4 w-4" />
+                <Icon className="h-5 w-5" />
                 {item.label}
               </Link>
             );

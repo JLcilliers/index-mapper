@@ -28,7 +28,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-3xl font-light uppercase tracking-wider">Settings</h1>
+        <h1 className="text-3xl font-semibold">Settings</h1>
         <p className="text-muted-foreground">
           Google Search Console connection and classification rules
         </p>

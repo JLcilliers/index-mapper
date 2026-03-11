@@ -45,7 +45,7 @@ export default async function ClientDetailPage({
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-3xl font-light uppercase tracking-wider">{client.name}</h1>
+          <h1 className="text-3xl font-semibold">{client.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-muted-foreground">
             <Globe className="h-4 w-4" />
             {client.domain}
