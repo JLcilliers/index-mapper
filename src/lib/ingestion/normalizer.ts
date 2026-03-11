@@ -9,6 +9,9 @@ export function normalizeUrl(url: string): string {
   try {
     const parsed = new URL(normalized);
 
+    // Always normalize to https
+    parsed.protocol = "https:";
+
     // Lowercase hostname
     parsed.hostname = parsed.hostname.toLowerCase();
 
