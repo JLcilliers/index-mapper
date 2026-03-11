@@ -53,6 +53,27 @@ export async function GET(request: NextRequest) {
       // Get date range
       const dates = getDateRange(range, customStart, customEnd);
 
+      // Reset all GSC data before re-fetching so stale metrics don't persist
+      await prisma.urlRecord.updateMany({
+        where: { projectRunId },
+        data: {
+          clicks: null,
+          impressions: null,
+          ctr: null,
+          position: null,
+          hasTraffic: false,
+          gscMatched: null,
+        },
+      });
+
+      // Delete GSC-only records (no crawl data) — they'll be recreated if still present
+      await prisma.urlRecord.deleteMany({
+        where: {
+          projectRunId,
+          dataSources: { equals: ["gsc"] },
+        },
+      });
+
       // Fetch GSC data from all property variants (http, https, www, non-www)
       const gscData = await fetchGscPageDataAllVariants(
         run.client.gscProperty,
@@ -60,7 +81,7 @@ export async function GET(request: NextRequest) {
         dates.endDate
       );
 
-      // Get all crawled URLs
+      // Get all remaining crawled URLs
       const crawledRecords = await prisma.urlRecord.findMany({
         where: { projectRunId },
         select: { url: true },
@@ -123,7 +144,7 @@ export async function GET(request: NextRequest) {
         gscOnlyCount++;
       }
 
-      // Mark URLs not in GSC
+      // Mark remaining URLs as not in GSC and restore their crawl-only dataSources
       await prisma.urlRecord.updateMany({
         where: {
           projectRunId,
@@ -132,6 +153,7 @@ export async function GET(request: NextRequest) {
         data: {
           gscMatched: false,
           hasTraffic: false,
+          dataSources: ["crawl"],
         },
       });
 
