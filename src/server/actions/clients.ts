@@ -39,3 +39,12 @@ export async function archiveClient(id: string) {
   revalidatePath("/clients");
   revalidatePath("/");
 }
+
+export async function deleteClient(id: string) {
+  await prisma.client.delete({
+    where: { id },
+  });
+
+  revalidatePath("/clients");
+  revalidatePath("/");
+}

@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Globe, Plus } from "lucide-react";
 import { ClientFormDialog } from "@/components/clients/client-form-dialog";
+import { DeleteClientButton } from "@/components/clients/delete-client-button";
 import { CreateRunDialog } from "@/components/runs/create-run-dialog";
 
 export default async function ClientDetailPage({
@@ -68,6 +69,7 @@ export default async function ClientDetailPage({
           <ClientFormDialog client={client}>
             <Button variant="outline" size="sm">Edit</Button>
           </ClientFormDialog>
+          <DeleteClientButton clientId={client.id} clientName={client.name} />
           <CreateRunDialog clientId={client.id}>
             <Button size="sm">
               <Plus className="h-4 w-4 mr-2" />
