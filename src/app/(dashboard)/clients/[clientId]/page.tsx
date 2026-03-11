@@ -49,6 +49,16 @@ export default async function ClientDetailPage({
             <Globe className="h-4 w-4" />
             {client.domain}
             {client.niche && <span>&middot; {client.niche}</span>}
+            {client.gscProperty && (
+              <Badge variant="secondary" className="text-xs">
+                GSC: {client.gscProperty}
+              </Badge>
+            )}
+            {!client.gscProperty && (
+              <Badge variant="outline" className="text-xs">
+                No GSC property
+              </Badge>
+            )}
           </div>
           {client.notes && (
             <p className="text-sm text-muted-foreground mt-2">{client.notes}</p>
