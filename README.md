@@ -1,36 +1,110 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Index Mapper
+
+Multi-client SEO content mapping and index-bloat management system. Built for agencies managing 120+ client websites.
+
+## What It Does
+
+Index Mapper helps SEO teams classify every URL on a client's website into one of four action buckets:
+
+- **Keep as is** — Healthy, performing pages
+- **Improve / Update** — Pages with value that need work
+- **Redirect / Consolidate** — Duplicate or cannibalized pages
+- **Remove / Deindex** — Zero-value pages bloating the index
+
+## Workflow
+
+1. Create a client and a project run
+2. Upload CSV exports (Screaming Frog, GSC, GA, Ahrefs, etc.)
+3. System normalizes, merges, and classifies URLs
+4. Review flagged items in the review queue
+5. Override any machine recommendations
+6. Export the final mapping sheet
+
+## Tech Stack
+
+- **Framework**: Next.js (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS + shadcn/ui
+- **Database**: PostgreSQL (Neon) via Prisma ORM
+- **Auth**: NextAuth.js (credentials)
+- **Deployment**: Vercel
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+
+- Node.js 18+
+- PostgreSQL database (Neon recommended)
+
+### Setup
 
 ```bash
+# Install dependencies
+npm install
+
+# Copy env template and fill in values
+cp .env.example .env
+
+# Push database schema
+npx prisma db push
+
+# Generate Prisma client
+npx prisma generate
+
+# Seed default data (admin user + rule config)
+npm run db:seed
+
+# Start dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### Default Login
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```
+Email: admin@indexmapper.com
+Password: admin123
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Deploying to Vercel
 
-## Learn More
+1. Push to GitHub
+2. Import project in Vercel
+3. Set environment variables:
+   - `DATABASE_URL` — Neon pooled connection string
+   - `NEXTAUTH_SECRET` — Generate with `openssl rand -base64 32`
+   - `NEXTAUTH_URL` — Your Vercel URL
+4. Deploy
 
-To learn more about Next.js, take a look at the following resources:
+Build command is already configured: `npx prisma generate && next build`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+After first deploy, run the seed against production DB:
+```bash
+DATABASE_URL="your-prod-db-url" npm run db:seed
+```
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Classification Engine
 
-## Deploy on Vercel
+The engine uses three layers:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+1. **Hard Rules** — Immediate classification for clear cases (404s, homepage, legal pages)
+2. **Weighted Scoring** — 7-dimension scoring across traffic, business value, content quality, backlinks, internal links, topical relevance, and technical health
+3. **Manual Review Triggers** — Flags ambiguous cases for human review (conflicting signals, low data, etc.)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+See `docs/classification-logic.md` for full details.
+
+## Project Structure
+
+```
+src/
+├── app/           # Next.js pages and API routes
+├── components/    # React components
+├── lib/
+│   ├── classification/  # Classification engine
+│   └── ingestion/       # CSV parsing and normalization
+├── server/        # Server actions and queries
+└── types/         # TypeScript types and Zod schemas
+```
+
+## License
+
+Internal tool — proprietary.
