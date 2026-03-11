@@ -22,7 +22,7 @@ export default async function SettingsPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold">Settings</h1>
+        <h1 className="text-3xl font-light uppercase tracking-wider">Settings</h1>
         <p className="text-muted-foreground">
           Classification rules and scoring configuration
         </p>
@@ -65,24 +65,18 @@ export default async function SettingsPage() {
         <CardContent>
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span>Keep as is</span>
-              <span className="font-medium">{">="} {config.scoringThresholds.keepAsIs}</span>
+              <span>Keep Indexed</span>
+              <span className="font-medium">{">="} {config.scoringThresholds.keepIndexed}</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span>Improve / Update</span>
+              <span>Keep — Improve</span>
               <span className="font-medium">
-                {config.scoringThresholds.improveUpdate} – {config.scoringThresholds.keepAsIs - 1}
+                {config.scoringThresholds.keepIndexedImprove} – {config.scoringThresholds.keepIndexed - 1}
               </span>
             </div>
             <div className="flex justify-between text-sm">
-              <span>Redirect / Consolidate</span>
-              <span className="font-medium">
-                {config.scoringThresholds.redirectConsolidate} – {config.scoringThresholds.improveUpdate - 1}
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span>Remove / Deindex</span>
-              <span className="font-medium">{"<"} {config.scoringThresholds.redirectConsolidate}</span>
+              <span>Consider Noindex</span>
+              <span className="font-medium">{"<"} {config.scoringThresholds.keepIndexedImprove}</span>
             </div>
           </div>
         </CardContent>
@@ -103,7 +97,7 @@ export default async function SettingsPage() {
                 </div>
                 <div className="flex items-center gap-2">
                   <Badge variant="secondary" className="text-xs">
-                    {rule.classification.replace(/_/g, " ")}
+                    {rule.recommendation.replace(/_/g, " ")}
                   </Badge>
                   <Badge variant={rule.enabled ? "default" : "outline"} className="text-xs">
                     {rule.enabled ? "On" : "Off"}

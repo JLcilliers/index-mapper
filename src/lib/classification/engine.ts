@@ -1,5 +1,6 @@
 import type {
-  Classification,
+  IndexabilityRecommendation,
+  SecondaryAction,
   ClassificationResult,
   RuleConfigData,
   ScoringThresholds,
@@ -12,11 +13,10 @@ import { checkManualReviewTriggers } from "./manual-review";
 function classifyByScore(
   totalScore: number,
   thresholds: ScoringThresholds
-): Classification {
-  if (totalScore >= thresholds.keepAsIs) return "keep_as_is";
-  if (totalScore >= thresholds.improveUpdate) return "improve_update";
-  if (totalScore >= thresholds.redirectConsolidate) return "redirect_consolidate";
-  return "remove_deindex";
+): IndexabilityRecommendation {
+  if (totalScore >= thresholds.keepIndexed) return "KEEP_INDEXED";
+  if (totalScore >= thresholds.keepIndexedImprove) return "KEEP_INDEXED_IMPROVE";
+  return "CONSIDER_NOINDEX";
 }
 
 function computeConfidence(
@@ -33,9 +33,8 @@ function computeConfidence(
 
   // Distance from threshold adds confidence
   const distances = [
-    Math.abs(totalScore - thresholds.keepAsIs),
-    Math.abs(totalScore - thresholds.improveUpdate),
-    Math.abs(totalScore - thresholds.redirectConsolidate),
+    Math.abs(totalScore - thresholds.keepIndexed),
+    Math.abs(totalScore - thresholds.keepIndexedImprove),
   ];
   const minDistance = Math.min(...distances);
   confidence += Math.min(minDistance / 30, 0.15);
@@ -46,19 +45,62 @@ function computeConfidence(
   return Math.max(0.3, Math.min(0.95, confidence));
 }
 
+function determineSecondaryAction(
+  record: UrlRecord,
+  recommendation: IndexabilityRecommendation,
+  totalScore: number
+): SecondaryAction | null {
+  // For CONSIDER_NOINDEX, suggest specific implementation
+  if (recommendation === "CONSIDER_NOINDEX") {
+    if (record.canonical && record.canonical !== record.url) {
+      return "canonicalize";
+    }
+    if (record.backlinks && record.backlinks > 0) {
+      return "redirect_to_target"; // Preserve link equity
+    }
+    return "noindex_only";
+  }
+
+  // For KEEP_INDEXED_IMPROVE, suggest what to improve
+  if (recommendation === "KEEP_INDEXED_IMPROVE") {
+    if (record.isThinContent) return "improve_content";
+    if (record.missingTitle || record.missingH1) return "improve_content";
+    return "improve_content";
+  }
+
+  // For MANUAL_REVIEW, suggest what to investigate
+  if (recommendation === "MANUAL_REVIEW_REQUIRED") {
+    if (record.pageType === "legal_page" || record.pageType === "utility_page") {
+      return "preserve_legal_trust";
+    }
+    if (record.pageType === "location_page" || record.pageType === "core_service_page") {
+      return "review_internally";
+    }
+    return "review_internally";
+  }
+
+  return null;
+}
+
 function generateReasons(
   record: UrlRecord,
-  classification: Classification,
+  recommendation: IndexabilityRecommendation,
   totalScore: number
 ): { primary: string; secondary: string | null; action: string } {
   const reasons: string[] = [];
 
   // Traffic assessment
   const hasTraffic = (record.clicks ?? 0) > 0 || (record.sessions ?? 0) > 0;
-  if (!hasTraffic) {
-    reasons.push("No organic traffic or sessions detected");
+  const hasImpressions = (record.impressions ?? 0) > 0;
+
+  if (!hasTraffic && !hasImpressions) {
+    reasons.push("No organic traffic or impressions detected");
+  } else if (!hasTraffic && hasImpressions) {
+    reasons.push(`Has impressions (${record.impressions}) but no clicks — page is indexed but not attracting clicks`);
   } else if ((record.clicks ?? 0) > 50) {
     reasons.push(`Strong organic traffic (${record.clicks} clicks)`);
+  } else if (hasTraffic) {
+    reasons.push(`Low organic traffic (${record.clicks ?? 0} clicks)`);
   }
 
   // Backlink assessment
@@ -93,24 +135,24 @@ function generateReasons(
     reasons.push(`Page type: ${record.pageType.replace(/_/g, " ")}`);
   }
 
-  // Score context
-  reasons.push(`Overall score: ${Math.round(totalScore)}/100`);
+  // Score
+  reasons.push(`Indexability score: ${Math.round(totalScore)}/100`);
 
-  const primary = reasons[0] || `Classification score: ${Math.round(totalScore)}`;
+  const primary = reasons[0] || `Score: ${Math.round(totalScore)}`;
   const secondary = reasons.length > 1 ? reasons[1] : null;
 
-  // Action suggestion
-  const actions: Record<Classification, string> = {
-    keep_as_is: "No action needed — monitor in next audit cycle",
-    improve_update: "Update content, optimize on-page SEO, and improve internal linking",
-    redirect_consolidate: "Set up 301 redirect to the strongest related page",
-    remove_deindex: "Add noindex tag or request removal from index",
+  // Action suggestion based on new recommendations
+  const actions: Record<IndexabilityRecommendation, string> = {
+    KEEP_INDEXED: "No action needed — page should remain in the index",
+    KEEP_INDEXED_IMPROVE: "Keep indexed but improve content, on-page SEO, or internal linking",
+    CONSIDER_NOINDEX: "Consider adding noindex — review and approve before implementing",
+    MANUAL_REVIEW_REQUIRED: "Human review required — conflicting signals detected",
   };
 
   return {
     primary,
     secondary,
-    action: actions[classification],
+    action: actions[recommendation],
   };
 }
 
@@ -128,14 +170,18 @@ export function classifyUrl(
       config.scoringThresholds
     );
 
+    const recommendation = hardRuleResult.recommendation!;
+    const secondaryAction = determineSecondaryAction(record, recommendation, 0);
+
     return {
-      classification: hardRuleResult.classification!,
+      recommendation,
+      secondaryAction,
       confidenceScore: hardRuleResult.confidence!,
       primaryReason: hardRuleResult.reason!,
       secondaryReason: null,
-      suggestedAction: getHardRuleAction(hardRuleResult.classification!),
+      suggestedAction: getHardRuleAction(recommendation),
       suggestedTargetUrl: null,
-      needsReview: reviewTriggers.length > 0,
+      needsReview: reviewTriggers.length > 0 || recommendation === "MANUAL_REVIEW_REQUIRED",
       reviewTriggers,
       scoreBreakdown: {
         trafficValue: 0,
@@ -157,16 +203,22 @@ export function classifyUrl(
     config.pageTypeModifiers
   );
 
-  // Step 3: Classify by score
-  const classification = classifyByScore(totalScore, config.scoringThresholds);
-
-  // Step 4: Check manual review triggers
+  // Step 3: Check manual review triggers first
   const reviewTriggers = checkManualReviewTriggers(
     record,
     config.manualReviewTriggers,
     totalScore,
     config.scoringThresholds
   );
+
+  // Step 4: Classify by score
+  let recommendation: IndexabilityRecommendation;
+  if (reviewTriggers.length > 0) {
+    // If any review triggers fire, override to MANUAL_REVIEW
+    recommendation = "MANUAL_REVIEW_REQUIRED";
+  } else {
+    recommendation = classifyByScore(totalScore, config.scoringThresholds);
+  }
 
   // Step 5: Compute confidence
   const confidenceScore = computeConfidence(
@@ -179,39 +231,46 @@ export function classifyUrl(
   // Additional review trigger: low confidence
   if (confidenceScore < 0.5 && !reviewTriggers.includes("Classification confidence is too low for auto-action")) {
     reviewTriggers.push("Classification confidence is too low for auto-action");
+    if (recommendation !== "MANUAL_REVIEW_REQUIRED") {
+      recommendation = "MANUAL_REVIEW_REQUIRED";
+    }
   }
 
   // Step 6: Generate reasons
-  const reasons = generateReasons(record, classification, totalScore);
+  const reasons = generateReasons(record, recommendation, totalScore);
 
-  // Step 7: Suggest target URL for redirects
+  // Step 7: Determine secondary action
+  const secondaryAction = determineSecondaryAction(record, recommendation, totalScore);
+
+  // Step 8: Suggest target URL for redirects
   let suggestedTargetUrl: string | null = null;
-  if (classification === "redirect_consolidate" && record.canonical && record.canonical !== record.url) {
+  if (secondaryAction === "redirect_to_target" && record.canonical && record.canonical !== record.url) {
     suggestedTargetUrl = record.canonical;
   }
 
   return {
-    classification,
+    recommendation,
+    secondaryAction,
     confidenceScore,
     primaryReason: reasons.primary,
     secondaryReason: reasons.secondary,
     suggestedAction: reasons.action,
     suggestedTargetUrl,
-    needsReview: reviewTriggers.length > 0,
+    needsReview: reviewTriggers.length > 0 || recommendation === "MANUAL_REVIEW_REQUIRED",
     reviewTriggers,
     scoreBreakdown: breakdown,
     totalScore,
   };
 }
 
-function getHardRuleAction(classification: Classification): string {
-  const actions: Record<Classification, string> = {
-    keep_as_is: "No action needed",
-    improve_update: "Update content and optimize",
-    redirect_consolidate: "Set up 301 redirect",
-    remove_deindex: "Add noindex or remove page",
+function getHardRuleAction(recommendation: IndexabilityRecommendation): string {
+  const actions: Record<IndexabilityRecommendation, string> = {
+    KEEP_INDEXED: "No action needed — keep indexed",
+    KEEP_INDEXED_IMPROVE: "Keep indexed, improve content",
+    CONSIDER_NOINDEX: "Review and consider adding noindex",
+    MANUAL_REVIEW_REQUIRED: "Requires human review before any action",
   };
-  return actions[classification];
+  return actions[recommendation];
 }
 
 export function classifyUrls(

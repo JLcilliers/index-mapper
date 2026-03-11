@@ -19,21 +19,25 @@ export function StatsCards({
       title: "Active Clients",
       value: clientCount,
       icon: Users,
+      iconColor: "text-gp-purple",
     },
     {
       title: "Project Runs",
       value: runCount,
       icon: FolderOpen,
+      iconColor: "text-gp-magenta",
     },
     {
       title: "Total URLs",
       value: urlCount.toLocaleString(),
       icon: Link2,
+      iconColor: "text-gp-pool",
     },
     {
       title: "Pending Review",
       value: reviewCount.toLocaleString(),
       icon: AlertTriangle,
+      iconColor: "text-gp-teal",
     },
   ];
 
@@ -42,12 +46,12 @@ export function StatsCards({
       {stats.map((stat) => {
         const Icon = stat.icon;
         return (
-          <Card key={stat.title}>
+          <Card key={stat.title} className="border-l-2 border-l-gp-purple">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-sm font-medium text-muted-foreground">
                 {stat.title}
               </CardTitle>
-              <Icon className="h-4 w-4 text-muted-foreground" />
+              <Icon className={`h-4 w-4 ${stat.iconColor}`} />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stat.value}</div>

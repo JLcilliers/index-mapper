@@ -14,13 +14,19 @@ async function main() {
     pageTypeModifiers: JSON.parse(JSON.stringify(DEFAULT_RULE_CONFIG.pageTypeModifiers)),
   };
 
+  // Unset old defaults
+  await prisma.ruleConfig.updateMany({
+    where: { isDefault: true, id: { not: "default-v2" } },
+    data: { isDefault: false },
+  });
+
   // Create default rule config
   const ruleConfig = await prisma.ruleConfig.upsert({
-    where: { id: "default-v1" },
+    where: { id: "default-v2" },
     update: ruleData,
     create: {
-      id: "default-v1",
-      name: "Default v1",
+      id: "default-v2",
+      name: "Default v2 — Indexability",
       isDefault: true,
       ...ruleData,
     },

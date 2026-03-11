@@ -24,6 +24,7 @@ interface ClientFormDialogProps {
     domain: string;
     niche: string | null;
     notes: string | null;
+    gscProperty: string | null;
   };
 }
 
@@ -43,6 +44,7 @@ export function ClientFormDialog({ children, client }: ClientFormDialogProps) {
       domain: formData.get("domain") as string,
       niche: (formData.get("niche") as string) || undefined,
       notes: (formData.get("notes") as string) || undefined,
+      gscProperty: (formData.get("gscProperty") as string) || undefined,
     };
 
     try {

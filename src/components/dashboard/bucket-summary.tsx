@@ -5,22 +5,22 @@ interface BucketSummaryProps {
   bucketCounts: Record<string, number>;
 }
 
-const BUCKET_CONFIG = {
-  keep_as_is: {
-    label: "Keep as is",
-    color: "bg-green-100 text-green-800",
+const RECOMMENDATION_CONFIG = {
+  KEEP_INDEXED: {
+    label: "Keep Indexed",
+    color: "bg-gp-teal/15 text-gp-teal border border-gp-teal/30",
   },
-  improve_update: {
-    label: "Improve / Update",
-    color: "bg-blue-100 text-blue-800",
+  KEEP_INDEXED_IMPROVE: {
+    label: "Keep — Improve",
+    color: "bg-gp-pool/15 text-gp-pool border border-gp-pool/30",
   },
-  redirect_consolidate: {
-    label: "Redirect / Consolidate",
-    color: "bg-yellow-100 text-yellow-800",
+  CONSIDER_NOINDEX: {
+    label: "Consider Noindex",
+    color: "bg-gp-magenta/15 text-gp-magenta border border-gp-magenta/30",
   },
-  remove_deindex: {
-    label: "Remove / Deindex",
-    color: "bg-red-100 text-red-800",
+  MANUAL_REVIEW_REQUIRED: {
+    label: "Manual Review",
+    color: "bg-gp-purple/15 text-gp-purple border border-gp-purple/30",
   },
 };
 
@@ -30,7 +30,7 @@ export function BucketSummary({ bucketCounts }: BucketSummaryProps) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-base">Classification Summary</CardTitle>
+        <CardTitle className="text-base">Indexability Summary</CardTitle>
       </CardHeader>
       <CardContent>
         {total === 0 ? (
@@ -39,7 +39,7 @@ export function BucketSummary({ bucketCounts }: BucketSummaryProps) {
           </p>
         ) : (
           <div className="space-y-3">
-            {Object.entries(BUCKET_CONFIG).map(([key, config]) => {
+            {Object.entries(RECOMMENDATION_CONFIG).map(([key, config]) => {
               const count = bucketCounts[key] || 0;
               const percentage = total > 0 ? ((count / total) * 100).toFixed(1) : "0";
 

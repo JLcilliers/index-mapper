@@ -1,9 +1,9 @@
-import type { Classification, HardRule } from "@/types";
+import type { IndexabilityRecommendation, HardRule } from "@/types";
 import type { UrlRecord } from "@prisma/client";
 
 export interface HardRuleResult {
   matched: boolean;
-  classification?: Classification;
+  recommendation?: IndexabilityRecommendation;
   confidence?: number;
   reason?: string;
 }
@@ -40,6 +40,13 @@ const RULE_EVALUATORS: Record<string, RuleEvaluator> = {
     (r.wordCount === null || r.wordCount === undefined || r.wordCount < 100) &&
     (!r.clicks || r.clicks === 0) &&
     (!r.sessions || r.sessions === 0),
+
+  meta_robots_noindex: (r) => {
+    const metaRobots = (r as Record<string, unknown>).metaRobots as string | null;
+    return metaRobots !== null &&
+      metaRobots !== undefined &&
+      metaRobots.toLowerCase().includes("noindex");
+  },
 };
 
 export function evaluateHardRules(
@@ -55,7 +62,7 @@ export function evaluateHardRules(
     if (evaluator(record)) {
       return {
         matched: true,
-        classification: rule.classification,
+        recommendation: rule.recommendation,
         confidence: rule.confidence,
         reason: rule.reason,
       };

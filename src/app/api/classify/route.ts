@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     // Update run status
     await prisma.projectRun.update({
       where: { id: projectRunId },
-      data: { status: "processing" },
+      data: { status: "classifying" },
     });
 
     // Load rule config
@@ -67,7 +67,8 @@ export async function POST(request: NextRequest) {
         await prisma.urlRecord.update({
           where: { id: record.id },
           data: {
-            classification: result.classification,
+            recommendation: result.recommendation,
+            secondaryAction: result.secondaryAction,
             confidenceScore: result.confidenceScore,
             primaryReason: result.primaryReason,
             secondaryReason: result.secondaryReason,

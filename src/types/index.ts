@@ -1,15 +1,38 @@
-export type Classification =
-  | "keep_as_is"
-  | "improve_update"
-  | "redirect_consolidate"
-  | "remove_deindex";
+// ── Indexability Recommendations (primary output) ──
+
+export type IndexabilityRecommendation =
+  | "KEEP_INDEXED"
+  | "KEEP_INDEXED_IMPROVE"
+  | "CONSIDER_NOINDEX"
+  | "MANUAL_REVIEW_REQUIRED";
+
+export type SecondaryAction =
+  | "improve_content"
+  | "consolidate_pages"
+  | "redirect_to_target"
+  | "canonicalize"
+  | "noindex_only"
+  | "review_internally"
+  | "investigate_tracking"
+  | "preserve_legal_trust";
+
+// Legacy alias — old code may still reference this
+export type Classification = IndexabilityRecommendation;
+
+// ── Run Status ──
 
 export type RunStatus =
   | "draft"
-  | "processing"
+  | "crawling"
+  | "crawl_complete"
+  | "fetching_gsc"
+  | "merging"
+  | "classifying"
   | "classified"
   | "in_review"
   | "completed";
+
+// ── File & Page Types ──
 
 export type FileType =
   | "crawl"
@@ -35,6 +58,8 @@ export type PageType =
   | "old_campaign_page"
   | "unknown";
 
+// ── Scoring ──
+
 export interface ScoreBreakdown {
   trafficValue: number;
   businessValue: number;
@@ -46,7 +71,8 @@ export interface ScoreBreakdown {
 }
 
 export interface ClassificationResult {
-  classification: Classification;
+  recommendation: IndexabilityRecommendation;
+  secondaryAction: SecondaryAction | null;
   confidenceScore: number;
   primaryReason: string;
   secondaryReason: string | null;
@@ -57,6 +83,8 @@ export interface ClassificationResult {
   scoreBreakdown: ScoreBreakdown;
   totalScore: number;
 }
+
+// ── Rule Configuration ──
 
 export interface RuleConfigData {
   hardRules: HardRule[];
@@ -70,7 +98,7 @@ export interface HardRule {
   id: string;
   name: string;
   condition: string;
-  classification: Classification;
+  recommendation: IndexabilityRecommendation;
   confidence: number;
   reason: string;
   enabled: boolean;
@@ -87,9 +115,8 @@ export interface ScoreWeights {
 }
 
 export interface ScoringThresholds {
-  keepAsIs: number;
-  improveUpdate: number;
-  redirectConsolidate: number;
+  keepIndexed: number;
+  keepIndexedImprove: number;
 }
 
 export interface ManualReviewTrigger {
@@ -99,6 +126,8 @@ export interface ManualReviewTrigger {
   reason: string;
   enabled: boolean;
 }
+
+// ── CSV Ingestion (fallback) ──
 
 export interface ColumnMapping {
   url?: string;
@@ -120,6 +149,8 @@ export interface ColumnMapping {
   internalLinksIn?: string;
   internalLinksOut?: string;
   lastModified?: string;
+  metaRobots?: string;
+  metaDescription?: string;
 }
 
 export interface NormalizedUrlData {
@@ -128,7 +159,9 @@ export interface NormalizedUrlData {
   statusCode?: number | null;
   indexability?: string | null;
   canonical?: string | null;
+  metaRobots?: string | null;
   title?: string | null;
+  metaDescription?: string | null;
   h1?: string | null;
   wordCount?: number | null;
   clicks?: number | null;
@@ -146,9 +179,46 @@ export interface NormalizedUrlData {
   dataSources: string[];
 }
 
+// ── Crawler ──
+
+export interface CrawlResult {
+  url: string;
+  statusCode: number;
+  canonical: string | null;
+  metaRobots: string | null;
+  title: string | null;
+  metaDescription: string | null;
+  h1: string | null;
+  wordCount: number;
+  contentType: string | null;
+  responseTimeMs: number;
+  internalLinks: string[];
+  externalLinks: string[];
+}
+
+export interface CrawlProgress {
+  total: number;
+  completed: number;
+  failed: number;
+  pending: number;
+  status: RunStatus;
+}
+
+// ── GSC ──
+
+export interface GscPageData {
+  page: string;
+  clicks: number;
+  impressions: number;
+  ctr: number;
+  position: number;
+}
+
+// ── Filters & Pagination ──
+
 export interface UrlFilterParams {
   projectRunId: string;
-  classification?: Classification;
+  recommendation?: IndexabilityRecommendation;
   pageType?: string;
   needsReview?: boolean;
   isIndexable?: boolean;

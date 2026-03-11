@@ -3,6 +3,7 @@
 import { prisma } from "@/lib/db";
 import { projectRunSchema } from "@/types/schemas";
 import { revalidatePath } from "next/cache";
+import type { RunStatus } from "@/types";
 
 export async function createRun(data: unknown) {
   const validated = projectRunSchema.parse(data);
@@ -12,6 +13,8 @@ export async function createRun(data: unknown) {
       name: validated.name,
       description: validated.description,
       clientId: validated.clientId,
+      crawlMaxPages: validated.crawlMaxPages,
+      crawlMaxDepth: validated.crawlMaxDepth,
     },
   });
 
@@ -19,10 +22,7 @@ export async function createRun(data: unknown) {
   return run;
 }
 
-export async function updateRunStatus(
-  runId: string,
-  status: "draft" | "processing" | "classified" | "in_review" | "completed"
-) {
+export async function updateRunStatus(runId: string, status: RunStatus) {
   const run = await prisma.projectRun.update({
     where: { id: runId },
     data: { status },

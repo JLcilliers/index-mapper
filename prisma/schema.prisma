@@ -8,15 +8,26 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model GoogleConnection {
+  id           String   @id @default(cuid())
+  accessToken  String
+  refreshToken String
+  tokenExpiry  DateTime
+  email        String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model Client {
-  id        String   @id @default(cuid())
-  name      String
-  domain    String
-  niche     String?
-  notes     String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String   @id @default(cuid())
+  name        String
+  domain      String
+  niche       String?
+  notes       String?
+  gscProperty String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   projectRuns ProjectRun[]
 
@@ -25,7 +36,11 @@ model Client {
 
 enum RunStatus {
   draft
-  processing
+  crawling
+  crawl_complete
+  fetching_gsc
+  merging
+  classifying
   classified
   in_review
   completed
@@ -40,6 +55,18 @@ model ProjectRun {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
+  // Crawl settings
+  crawlMaxPages   Int     @default(500)
+  crawlMaxDepth   Int     @default(10)
+  crawlStarted    DateTime?
+  crawlCompleted  DateTime?
+  crawlError      String?
+
+  // GSC settings
+  gscDateRangeStart DateTime?
+  gscDateRangeEnd   DateTime?
+  gscFetchedAt      DateTime?
+
   clientId     String
   client       Client     @relation(fields: [clientId], references: [id], onDelete: Cascade)
   ruleConfigId String?
@@ -47,9 +74,25 @@ model ProjectRun {
 
   uploadedFiles UploadedFile[]
   urlRecords    UrlRecord[]
+  crawlQueue    CrawlQueue[]
 
   @@index([clientId])
   @@index([status])
+}
+
+model CrawlQueue {
+  id           String   @id @default(cuid())
+  url          String
+  depth        Int      @default(0)
+  status       String   @default("pending") // pending, processing, completed, failed
+  errorMessage String?
+  createdAt    DateTime @default(now())
+
+  projectRunId String
+  projectRun   ProjectRun @relation(fields: [projectRunId], references: [id], onDelete: Cascade)
+
+  @@unique([projectRunId, url])
+  @@index([projectRunId, status])
 }
 
 model UploadedFile {
@@ -72,29 +115,42 @@ model UrlRecord {
   url     String
   urlRaw  String
 
-  pageType     String?
-  statusCode   Int?
-  indexability String?
-  canonical    String?
-  title        String?
-  h1           String?
-  wordCount    Int?
-  lastModified DateTime?
+  // Crawl data
+  pageType        String?
+  statusCode      Int?
+  indexability     String?
+  canonical        String?
+  metaRobots       String?
+  title            String?
+  metaDescription  String?
+  h1               String?
+  wordCount        Int?
+  lastModified     DateTime?
+  contentType      String?
+  crawlDepth       Int?
+  responseTimeMs   Int?
 
+  // GSC data
   clicks      Int?
   impressions Int?
   ctr         Float?
   position    Float?
 
+  // Analytics data (from CSV fallback)
   sessions   Int?
   bounceRate Float?
   conversions Int?
 
+  // Backlink data (from CSV fallback)
   backlinks        Int?
   referringDomains Int?
+
+  // Link structure
   internalLinksIn  Int?
   internalLinksOut Int?
+  outlinks         Json?  // Array of discovered outlink URLs (for computing inlinks)
 
+  // Derived fields
   isIndexable     Boolean?
   isOrphan        Boolean?
   isThinContent   Boolean?
@@ -105,19 +161,24 @@ model UrlRecord {
   missingH1       Boolean?
   dataCompleteness Float?
 
-  classification    String?
-  confidenceScore   Float?
-  primaryReason     String?
-  secondaryReason   String?
-  suggestedAction   String?
-  suggestedTargetUrl String?
-  needsReview       Boolean @default(false)
-  reviewTriggers    Json?
+  // Classification results
+  recommendation      String?   // KEEP_INDEXED, KEEP_INDEXED_IMPROVE, CONSIDER_NOINDEX, MANUAL_REVIEW_REQUIRED
+  secondaryAction     String?   // improve_content, consolidate_pages, redirect_to_target, etc.
+  confidenceScore     Float?
+  primaryReason       String?
+  secondaryReason     String?
+  suggestedAction     String?
+  suggestedTargetUrl  String?
+  needsReview         Boolean @default(false)
+  reviewTriggers      Json?
 
   scoreBreakdown Json?
   totalScore     Float?
 
-  dataSources Json?
+  // Data source tracking
+  dataSources Json?     // ["crawl", "gsc", "csv_crawl", "csv_gsc", etc.]
+  gscMatched  Boolean?  // Whether this URL was matched in GSC data
+
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -127,19 +188,20 @@ model UrlRecord {
   reviewDecision ReviewDecision?
 
   @@unique([projectRunId, url])
-  @@index([projectRunId, classification])
+  @@index([projectRunId, recommendation])
   @@index([projectRunId, needsReview])
   @@index([projectRunId, pageType])
 }
 
 model ReviewDecision {
-  id                     String   @id @default(cuid())
-  originalClassification String
-  finalClassification    String
-  reason                 String?
-  notes                  String?
-  targetUrl              String?
-  reviewedAt             DateTime @default(now())
+  id                       String   @id @default(cuid())
+  originalRecommendation   String
+  finalRecommendation      String
+  reason                   String?
+  notes                    String?
+  targetUrl                String?
+  approved                 Boolean  @default(false)  // For noindex: explicit approval flag
+  reviewedAt               DateTime @default(now())
 
   urlRecordId String    @unique
   urlRecord   UrlRecord @relation(fields: [urlRecordId], references: [id], onDelete: Cascade)

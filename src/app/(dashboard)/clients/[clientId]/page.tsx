@@ -24,11 +24,11 @@ export default async function ClientDetailPage({
   if (!client) notFound();
 
   const statusColors: Record<string, string> = {
-    draft: "bg-gray-100 text-gray-700",
-    processing: "bg-blue-100 text-blue-700",
-    classified: "bg-purple-100 text-purple-700",
-    in_review: "bg-yellow-100 text-yellow-700",
-    completed: "bg-green-100 text-green-700",
+    draft: "bg-muted text-muted-foreground",
+    processing: "bg-gp-pool/15 text-gp-pool",
+    classified: "bg-gp-purple/15 text-gp-purple",
+    in_review: "bg-gp-magenta/15 text-gp-magenta",
+    completed: "bg-gp-teal/15 text-gp-teal",
   };
 
   return (
@@ -44,7 +44,7 @@ export default async function ClientDetailPage({
 
       <div className="flex items-start justify-between">
         <div>
-          <h1 className="text-2xl font-bold">{client.name}</h1>
+          <h1 className="text-3xl font-light uppercase tracking-wider">{client.name}</h1>
           <div className="flex items-center gap-2 mt-1 text-muted-foreground">
             <Globe className="h-4 w-4" />
             {client.domain}

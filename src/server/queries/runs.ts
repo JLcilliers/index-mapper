@@ -17,10 +17,10 @@ export async function getRun(id: string) {
 }
 
 export async function getRunSummary(runId: string) {
-  const bucketCounts = await prisma.urlRecord.groupBy({
-    by: ["classification"],
+  const recommendationCounts = await prisma.urlRecord.groupBy({
+    by: ["recommendation"],
     _count: { id: true },
-    where: { projectRunId: runId, classification: { not: null } },
+    where: { projectRunId: runId, recommendation: { not: null } },
   });
 
   const pageTypeCounts = await prisma.urlRecord.groupBy({
@@ -41,14 +41,19 @@ export async function getRunSummary(runId: string) {
     where: { urlRecord: { projectRunId: runId } },
   });
 
+  const gscMatchedCount = await prisma.urlRecord.count({
+    where: { projectRunId: runId, gscMatched: true },
+  });
+
   return {
     totalCount,
     reviewCount,
     reviewedCount,
-    bucketCounts: bucketCounts.reduce(
+    gscMatchedCount,
+    bucketCounts: recommendationCounts.reduce(
       (acc, item) => {
-        if (item.classification) {
-          acc[item.classification] = item._count.id;
+        if (item.recommendation) {
+          acc[item.recommendation] = item._count.id;
         }
         return acc;
       },

@@ -8,7 +8,7 @@ export async function getUrlRecords(
 ): Promise<PaginatedResult<UrlRecord>> {
   const {
     projectRunId,
-    classification,
+    recommendation,
     pageType,
     needsReview,
     isIndexable,
@@ -26,7 +26,7 @@ export async function getUrlRecords(
 
   const where: Prisma.UrlRecordWhereInput = {
     projectRunId,
-    ...(classification && { classification }),
+    ...(recommendation && { recommendation }),
     ...(pageType && { pageType }),
     ...(needsReview !== undefined && { needsReview }),
     ...(isIndexable !== undefined && { isIndexable }),

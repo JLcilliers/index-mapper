@@ -38,18 +38,18 @@ interface UrlTableProps {
   onUrlClick: (urlRecord: UrlRecordWithReview) => void;
 }
 
-const BUCKET_COLORS: Record<string, string> = {
-  keep_as_is: "bg-green-100 text-green-800",
-  improve_update: "bg-blue-100 text-blue-800",
-  redirect_consolidate: "bg-yellow-100 text-yellow-800",
-  remove_deindex: "bg-red-100 text-red-800",
+const RECOMMENDATION_COLORS: Record<string, string> = {
+  KEEP_INDEXED: "bg-gp-teal/15 text-gp-teal border border-gp-teal/30",
+  KEEP_INDEXED_IMPROVE: "bg-gp-pool/15 text-gp-pool border border-gp-pool/30",
+  CONSIDER_NOINDEX: "bg-gp-magenta/15 text-gp-magenta border border-gp-magenta/30",
+  MANUAL_REVIEW_REQUIRED: "bg-gp-purple/15 text-gp-purple border border-gp-purple/30",
 };
 
-const BUCKET_LABELS: Record<string, string> = {
-  keep_as_is: "Keep",
-  improve_update: "Improve",
-  redirect_consolidate: "Redirect",
-  remove_deindex: "Remove",
+const RECOMMENDATION_LABELS: Record<string, string> = {
+  KEEP_INDEXED: "Keep",
+  KEEP_INDEXED_IMPROVE: "Improve",
+  CONSIDER_NOINDEX: "Noindex",
+  MANUAL_REVIEW_REQUIRED: "Review",
 };
 
 export function UrlTable({
@@ -104,18 +104,18 @@ export function UrlTable({
         </form>
 
         <Select
-          value={searchParams.get("classification") || "all"}
-          onValueChange={(v) => updateParams({ classification: v ?? undefined, page: "1" })}
+          value={searchParams.get("recommendation") || "all"}
+          onValueChange={(v) => updateParams({ recommendation: v ?? undefined, page: "1" })}
         >
-          <SelectTrigger className="w-44">
-            <SelectValue placeholder="Classification" />
+          <SelectTrigger className="w-48">
+            <SelectValue placeholder="Recommendation" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All classifications</SelectItem>
-            <SelectItem value="keep_as_is">Keep as is</SelectItem>
-            <SelectItem value="improve_update">Improve / Update</SelectItem>
-            <SelectItem value="redirect_consolidate">Redirect / Consolidate</SelectItem>
-            <SelectItem value="remove_deindex">Remove / Deindex</SelectItem>
+            <SelectItem value="all">All recommendations</SelectItem>
+            <SelectItem value="KEEP_INDEXED">Keep Indexed</SelectItem>
+            <SelectItem value="KEEP_INDEXED_IMPROVE">Keep — Improve</SelectItem>
+            <SelectItem value="CONSIDER_NOINDEX">Consider Noindex</SelectItem>
+            <SelectItem value="MANUAL_REVIEW_REQUIRED">Manual Review</SelectItem>
           </SelectContent>
         </Select>
 
@@ -144,6 +144,7 @@ export function UrlTable({
             <SelectItem value="all">All page types</SelectItem>
             <SelectItem value="homepage">Homepage</SelectItem>
             <SelectItem value="core_service_page">Service Page</SelectItem>
+            <SelectItem value="service_subpage">Service Subpage</SelectItem>
             <SelectItem value="blog_article">Blog Article</SelectItem>
             <SelectItem value="location_page">Location Page</SelectItem>
             <SelectItem value="category_tag_page">Category/Tag</SelectItem>
@@ -161,7 +162,7 @@ export function UrlTable({
       </div>
 
       {/* Table */}
-      <div className="border rounded-lg overflow-hidden">
+      <div className="border overflow-hidden">
         <Table>
           <TableHeader>
             <TableRow>
@@ -169,9 +170,9 @@ export function UrlTable({
               <TableHead>Type</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Clicks</TableHead>
-              <TableHead>Backlinks</TableHead>
+              <TableHead>Impressions</TableHead>
               <TableHead>Words</TableHead>
-              <TableHead>Classification</TableHead>
+              <TableHead>Recommendation</TableHead>
               <TableHead>Confidence</TableHead>
               <TableHead>Review</TableHead>
             </TableRow>
@@ -185,9 +186,9 @@ export function UrlTable({
               </TableRow>
             ) : (
               records.map((record) => {
-                const finalClassification =
-                  record.reviewDecision?.finalClassification ??
-                  record.classification;
+                const finalRec =
+                  record.reviewDecision?.finalRecommendation ??
+                  record.recommendation;
                 const isOverridden = !!record.reviewDecision;
 
                 return (
@@ -224,20 +225,20 @@ export function UrlTable({
                       <span className="text-xs">{record.clicks ?? "—"}</span>
                     </TableCell>
                     <TableCell>
-                      <span className="text-xs">{record.backlinks ?? "—"}</span>
+                      <span className="text-xs">{record.impressions ?? "—"}</span>
                     </TableCell>
                     <TableCell>
                       <span className="text-xs">{record.wordCount ?? "—"}</span>
                     </TableCell>
                     <TableCell>
-                      {finalClassification ? (
+                      {finalRec ? (
                         <Badge
                           variant="secondary"
                           className={`text-xs ${
-                            BUCKET_COLORS[finalClassification] || ""
+                            RECOMMENDATION_COLORS[finalRec] || ""
                           } ${isOverridden ? "ring-2 ring-primary/30" : ""}`}
                         >
-                          {BUCKET_LABELS[finalClassification] || finalClassification}
+                          {RECOMMENDATION_LABELS[finalRec] || finalRec}
                           {isOverridden && " *"}
                         </Badge>
                       ) : (
@@ -253,7 +254,7 @@ export function UrlTable({
                     </TableCell>
                     <TableCell>
                       {record.needsReview && (
-                        <Badge variant="outline" className="text-xs bg-amber-50 text-amber-700 border-amber-200">
+                        <Badge variant="outline" className="text-xs bg-gp-purple/10 text-gp-purple border-gp-purple/30">
                           Review
                         </Badge>
                       )}

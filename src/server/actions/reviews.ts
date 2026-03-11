@@ -10,7 +10,7 @@ export async function submitReview(data: unknown) {
   const urlRecord = await prisma.urlRecord.findUnique({
     where: { id: validated.urlRecordId },
     select: {
-      classification: true,
+      recommendation: true,
       projectRunId: true,
       projectRun: { select: { clientId: true } },
     },
@@ -22,17 +22,19 @@ export async function submitReview(data: unknown) {
     where: { urlRecordId: validated.urlRecordId },
     create: {
       urlRecordId: validated.urlRecordId,
-      originalClassification: urlRecord.classification || "unknown",
-      finalClassification: validated.finalClassification,
+      originalRecommendation: urlRecord.recommendation || "unknown",
+      finalRecommendation: validated.finalRecommendation,
       reason: validated.reason,
       notes: validated.notes,
       targetUrl: validated.targetUrl,
+      approved: validated.approved,
     },
     update: {
-      finalClassification: validated.finalClassification,
+      finalRecommendation: validated.finalRecommendation,
       reason: validated.reason,
       notes: validated.notes,
       targetUrl: validated.targetUrl,
+      approved: validated.approved,
       reviewedAt: new Date(),
     },
   });

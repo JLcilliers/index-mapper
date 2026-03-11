@@ -37,9 +37,9 @@ export async function getDashboardStats() {
   ]);
 
   const bucketCounts = await prisma.urlRecord.groupBy({
-    by: ["classification"],
+    by: ["recommendation"],
     _count: { id: true },
-    where: { classification: { not: null } },
+    where: { recommendation: { not: null } },
   });
 
   const recentRuns = await prisma.projectRun.findMany({
@@ -58,8 +58,8 @@ export async function getDashboardStats() {
     reviewCount,
     bucketCounts: bucketCounts.reduce(
       (acc, item) => {
-        if (item.classification) {
-          acc[item.classification] = item._count.id;
+        if (item.recommendation) {
+          acc[item.recommendation] = item._count.id;
         }
         return acc;
       },

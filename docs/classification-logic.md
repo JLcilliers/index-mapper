@@ -1,136 +1,151 @@
-# Classification Logic — Index Mapper
+# Classification Logic — Indexability Decision Engine
 
-## Action Buckets
+## Overview
 
-### 1. keep_as_is
-The page is healthy, performing, and should remain indexed as-is.
-- Good traffic or conversions
-- Strong backlink profile
-- Unique, relevant content
-- Technically sound
+The classification engine evaluates each URL and produces an **indexability recommendation**. The primary question is: "Should this page remain in Google's index?"
 
-### 2. improve_update
-The page has value but needs improvement to perform better.
-- Thin content that covers an important topic
-- Outdated content with good backlinks
-- Pages with declining traffic but strategic importance
-- Pages with technical issues that are fixable
+## Output States
 
-### 3. redirect_consolidate
-The page should be redirected to a better page or consolidated with similar content.
-- Duplicate or near-duplicate content
-- Cannibalization with a stronger page
-- Old campaign pages with backlinks
-- Multiple thin pages covering the same topic
+### Primary Recommendation
 
-### 4. remove_deindex
-The page should be removed from the index entirely.
-- Zero value: no traffic, no backlinks, no conversions
-- Auto-generated junk
-- Expired campaigns with no backlinks
-- Tag/category pages with no content
-- Media attachment pages
+| State | Meaning | Auto-action safe? |
+|---|---|---|
+| `KEEP_INDEXED` | Page should remain indexed — it provides value | Yes |
+| `KEEP_INDEXED_IMPROVE` | Keep indexed but needs improvement to maximize value | Yes (keep) |
+| `CONSIDER_NOINDEX` | System recommends this page be noindexed | **No — requires human approval** |
+| `MANUAL_REVIEW_REQUIRED` | Conflicting signals — human must decide | No |
 
-## Classification Pipeline
+**Critical rule**: The system NEVER auto-noindexes. `CONSIDER_NOINDEX` is a recommendation that must be approved by a human reviewer before any implementation action is taken.
 
-### A. Hard Rules (Short-Circuit)
+### Secondary Action Types
 
-Hard rules produce immediate classifications with high confidence:
+Each URL may also carry a secondary action suggestion:
 
-| Rule | Classification | Confidence |
-|------|---------------|------------|
-| Status 404/410/5xx | remove_deindex | 0.95 |
-| Noindex tag present | remove_deindex (validate) | 0.7 |
-| Homepage | keep_as_is | 0.99 |
-| Legal pages (privacy, terms) | keep_as_is | 0.95 |
-| Page type = media/attachment AND no backlinks AND no traffic | remove_deindex | 0.9 |
-| Page type = tag/category AND word count < 100 AND no traffic | remove_deindex | 0.85 |
-| Redirect chain detected | redirect_consolidate | 0.85 |
-| Canonical points elsewhere | redirect_consolidate | 0.8 |
+- `improve_content` — Update/expand content
+- `consolidate_pages` — Merge with similar page
+- `redirect_to_target` — 301 redirect to better page
+- `canonicalize` — Set canonical to preferred version
+- `noindex_only` — Add noindex, keep page accessible
+- `review_internally` — Needs team discussion
+- `investigate_tracking` — Check if tracking/analytics is set up
+- `preserve_legal_trust` — Keep for compliance/trust reasons
 
-### B. Weighted Scoring
+## Scoring System (preserved from v1, remapped)
 
-For URLs not caught by hard rules, compute scores across dimensions:
+The 7-dimensional scoring system is retained:
 
-| Dimension | Weight | Signals Used |
-|-----------|--------|--------------|
-| Traffic Value | 0.20 | clicks, impressions, sessions |
-| Business Value | 0.20 | conversions, page type strategic importance |
-| Content Quality | 0.15 | word count, title present, H1 present, freshness |
-| Backlink Value | 0.15 | external backlinks count, referring domains |
-| Internal Importance | 0.10 | internal links in, internal links out, depth |
-| Topical Relevance | 0.10 | content fit score (manual or inferred from page type) |
-| Technical Health | 0.10 | status code, indexability, canonical consistency |
+| Dimension | Weight | What it measures |
+|---|---|---|
+| Traffic Value | 20% | Clicks, impressions, sessions |
+| Business Value | 20% | Conversions, strategic page type |
+| Content Quality | 15% | Word count, title, H1 |
+| Backlink Value | 15% | External links, referring domains |
+| Internal Importance | 10% | Internal link structure |
+| Topical Relevance | 10% | Page type strategic fit |
+| Technical Health | 10% | Status code, indexability, canonical |
 
-Each dimension produces a score from 0-100.
+### Threshold Mapping
 
-#### Scoring Thresholds
+| Total Score | Recommendation |
+|---|---|
+| >= 65 | KEEP_INDEXED |
+| 45–64 | KEEP_INDEXED_IMPROVE |
+| < 45 | CONSIDER_NOINDEX |
 
-| Total Score | Classification |
-|-------------|---------------|
-| >= 70 | keep_as_is |
-| 50-69 | improve_update |
-| 30-49 | redirect_consolidate |
-| < 30 | remove_deindex |
+Any URL with active manual review triggers → `MANUAL_REVIEW_REQUIRED` (regardless of score).
 
-### C. Confidence Calculation
+## Noindex Decision Logic
 
-Confidence reflects how much data we have and how clear the signal is:
+A page is flagged as `CONSIDER_NOINDEX` when **multiple signals align**:
 
-- Base confidence starts at 0.5
-- Each available data source adds confidence: +0.1 per source (crawl, GSC, GA, backlinks)
-- Score distance from threshold boundary adds confidence: farther = more confident
-- Conflicting signals reduce confidence: -0.1 per major conflict
-- Maximum confidence: 0.95 (never 1.0 for machine classification)
-- Minimum confidence: 0.3
+### Strong noindex signals (each adds weight)
+- Zero impressions over 6+ months
+- Zero clicks over 6+ months
+- Page type is archive/tag/author/filter/search/template
+- Thin content (< 200 words) with no unique value
+- Duplicate title or H1 with another page
+- Not internally linked (orphan)
+- Not a conversion asset
+- Not strategically relevant to services/locations
+- Not legally required
 
-### D. Manual Review Triggers
+### Strong keep-indexed signals (each overrides)
+- Has meaningful impressions (even without clicks)
+- Ranks for any terms (position data exists)
+- Is a service or location page
+- Has conversions
+- Has backlinks from external sites
+- Supports E-E-A-T/trust
+- Is legally required (privacy, terms, etc.)
+- Is part of a valid topical cluster
+- Supports navigation/UX
 
-These conditions flag a URL for human review regardless of classification:
+### Automatic MANUAL_REVIEW_REQUIRED triggers
+- Conflicting signals (positive + negative signals both strong)
+- GSC data missing or incomplete
+- Low-performing but strategically important page type
+- Possible duplicate intent but uncertain
+- URL matching between crawl and GSC is unclear
+- Traffic is low but page type suggests it could be needed
+- Score is within 5 points of a threshold boundary
+- Page has backlinks but zero traffic
+- Page has conversions but low traffic
 
-| Trigger | Reason |
-|---------|--------|
-| Low traffic + strong backlinks (>5) | May have SEO value worth preserving |
-| Low traffic + conversions present | Revenue-generating despite low volume |
-| Possible duplicate without clear winner | Need human judgment on which to keep |
-| Legal/trust/utility page type | Should not be auto-removed |
-| Seasonal page (detected by URL pattern) | May be valuable at certain times |
-| Location page | Strategic local SEO value |
-| Missing data (< 2 data sources) | Insufficient data for confident classification |
-| Conflicting signals (3+ conflicts) | Machine cannot resolve |
-| Confidence < 0.5 | Too uncertain for auto-action |
-| Score near threshold boundary (within 5 points) | Could go either way |
+## Hard Rules (preserved and extended)
 
-### E. Page Type Scoring Adjustments
+### Auto-KEEP rules (high confidence)
+- Homepage → KEEP_INDEXED (confidence: 0.99)
+- Legal pages → KEEP_INDEXED (confidence: 0.95)
 
-Different page types have different baseline expectations:
+### Auto-CONSIDER_NOINDEX rules (still requires human approval)
+- 404/410 pages → CONSIDER_NOINDEX (confidence: 0.95)
+- 5xx pages → CONSIDER_NOINDEX (confidence: 0.85)
+- Media attachments with zero value → CONSIDER_NOINDEX (confidence: 0.90)
+- Empty tag/category pages → CONSIDER_NOINDEX (confidence: 0.85)
 
-| Page Type | Score Modifier | Notes |
-|-----------|---------------|-------|
-| homepage | +50 | Almost always keep |
-| core_service_page | +30 | High strategic value |
-| service_subpage | +15 | Important for service depth |
-| location_page | +20 | Local SEO value |
-| blog_article | 0 | Judged on metrics |
-| evergreen_guide | +10 | Long-term content value |
-| faq_page | +5 | Supporting content |
-| category_tag_page | -10 | Often low value |
-| author_page | -15 | Usually thin |
-| legal_page | +40 | Must keep, flag for review |
-| utility_page | +10 | Functional importance |
-| media_attachment | -25 | Usually should not be indexed |
-| old_campaign_page | -20 | Usually expired |
+### Auto-MANUAL_REVIEW rules
+- Canonical points elsewhere → MANUAL_REVIEW_REQUIRED
+- Location pages (strategic but may be low-traffic) → MANUAL_REVIEW_REQUIRED
 
-### F. Reason Generation
+## Confidence Score
 
-Each classification includes:
-- **primary_reason**: The strongest factor driving the classification
-- **secondary_reason**: The second strongest factor
-- **suggested_next_step**: Actionable recommendation
+Confidence ranges from 0.30 to 0.95:
 
-Example reasons:
-- "Zero organic traffic and no backlinks for 12+ months"
-- "Thin content (< 200 words) on non-strategic page type"
-- "Strong backlink profile (15 referring domains) preserves value"
-- "Duplicate content cluster detected — recommend consolidating to /main-page"
-- "Declining traffic but 3 conversions last quarter — review before action"
+- **Base**: 0.50
+- **Data completeness bonus**: up to +0.30
+- **Threshold distance bonus**: up to +0.15
+- **Review trigger penalty**: -0.05 per active trigger
+- **Minimum floor**: 0.30
+
+## What Traffic Alone Does NOT Determine
+
+A page with zero traffic is **not** automatically a noindex candidate. The engine must also consider:
+
+1. **Page type**: Service/location/trust pages should often remain indexed even with low traffic
+2. **Impressions**: Having impressions without clicks = the page IS indexed and ranking
+3. **Business context**: A core service page with zero traffic still needs indexing
+4. **Backlink equity**: Noindexing a page with backlinks wastes link equity
+5. **Recency**: Newly published pages may not have traffic yet
+6. **Topical completeness**: Removing cluster pages can hurt remaining pages
+
+## Implementation
+
+The classification engine lives in `src/lib/classification/` and the core output type is:
+
+```typescript
+type IndexabilityRecommendation =
+  | 'KEEP_INDEXED'
+  | 'KEEP_INDEXED_IMPROVE'
+  | 'CONSIDER_NOINDEX'
+  | 'MANUAL_REVIEW_REQUIRED';
+
+type SecondaryAction =
+  | 'improve_content'
+  | 'consolidate_pages'
+  | 'redirect_to_target'
+  | 'canonicalize'
+  | 'noindex_only'
+  | 'review_internally'
+  | 'investigate_tracking'
+  | 'preserve_legal_trust';
+```

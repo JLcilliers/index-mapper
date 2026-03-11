@@ -8,7 +8,6 @@ import {
   Users,
   Settings,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -20,13 +19,15 @@ export function MainNav() {
   const pathname = usePathname();
 
   return (
-    <header className="border-b bg-background">
+    <header className="bg-gp-smokey text-white">
       <div className="flex h-14 items-center px-6 gap-6">
-        <Link href="/" className="flex items-center gap-2 font-semibold text-lg">
-          <div className="h-7 w-7 rounded bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground text-xs font-bold">IM</span>
+        <Link href="/" className="flex items-center gap-3 group">
+          <div className="h-8 w-8 bg-gp-teal flex items-center justify-center">
+            <span className="text-white text-xs font-bold font-[family-name:var(--font-display)]">IM</span>
           </div>
-          <span>Index Mapper</span>
+          <span className="font-[family-name:var(--font-display)] text-lg uppercase tracking-wider text-white">
+            Index Mapper
+          </span>
         </Link>
 
         <nav className="flex items-center gap-1 ml-6">
@@ -38,18 +39,18 @@ export function MainNav() {
                 : pathname.startsWith(item.href);
 
             return (
-              <Link key={item.href} href={item.href}>
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  size="sm"
-                  className={cn(
-                    "gap-2",
-                    isActive && "font-medium"
-                  )}
-                >
-                  <Icon className="h-4 w-4" />
-                  {item.label}
-                </Button>
+              <Link
+                key={item.href}
+                href={item.href}
+                className={cn(
+                  "flex items-center gap-2 px-3 py-1.5 text-sm uppercase tracking-wide transition-colors font-[family-name:var(--font-display)]",
+                  isActive
+                    ? "text-gp-teal border-b-2 border-gp-teal"
+                    : "text-white/70 hover:text-white"
+                )}
+              >
+                <Icon className="h-4 w-4" />
+                {item.label}
               </Link>
             );
           })}

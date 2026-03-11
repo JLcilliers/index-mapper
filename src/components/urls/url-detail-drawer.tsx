@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -38,18 +39,18 @@ interface UrlDetailDrawerProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const BUCKET_COLORS: Record<string, string> = {
-  keep_as_is: "bg-green-100 text-green-800",
-  improve_update: "bg-blue-100 text-blue-800",
-  redirect_consolidate: "bg-yellow-100 text-yellow-800",
-  remove_deindex: "bg-red-100 text-red-800",
+const REC_COLORS: Record<string, string> = {
+  KEEP_INDEXED: "bg-gp-teal/15 text-gp-teal",
+  KEEP_INDEXED_IMPROVE: "bg-gp-pool/15 text-gp-pool",
+  CONSIDER_NOINDEX: "bg-gp-magenta/15 text-gp-magenta",
+  MANUAL_REVIEW_REQUIRED: "bg-gp-purple/15 text-gp-purple",
 };
 
-const BUCKET_LABELS: Record<string, string> = {
-  keep_as_is: "Keep as is",
-  improve_update: "Improve / Update",
-  redirect_consolidate: "Redirect / Consolidate",
-  remove_deindex: "Remove / Deindex",
+const REC_LABELS: Record<string, string> = {
+  KEEP_INDEXED: "Keep Indexed",
+  KEEP_INDEXED_IMPROVE: "Keep — Improve",
+  CONSIDER_NOINDEX: "Consider Noindex",
+  MANUAL_REVIEW_REQUIRED: "Manual Review",
 };
 
 export function UrlDetailDrawer({
@@ -57,9 +58,9 @@ export function UrlDetailDrawer({
   open,
   onOpenChange,
 }: UrlDetailDrawerProps) {
-  const [finalClassification, setFinalClassification] = useState(
-    urlRecord?.reviewDecision?.finalClassification ??
-      urlRecord?.classification ??
+  const [finalRecommendation, setFinalRecommendation] = useState(
+    urlRecord?.reviewDecision?.finalRecommendation ??
+      urlRecord?.recommendation ??
       ""
   );
   const [reason, setReason] = useState(
@@ -73,19 +74,23 @@ export function UrlDetailDrawer({
       urlRecord?.suggestedTargetUrl ??
       ""
   );
+  const [approved, setApproved] = useState(
+    urlRecord?.reviewDecision?.approved ?? false
+  );
   const [saving, setSaving] = useState(false);
   const router = useRouter();
 
   // Reset state when URL record changes
-  if (urlRecord && finalClassification !== (urlRecord.reviewDecision?.finalClassification ?? urlRecord.classification ?? "")) {
-    setFinalClassification(
-      urlRecord.reviewDecision?.finalClassification ?? urlRecord.classification ?? ""
+  if (urlRecord && finalRecommendation !== (urlRecord.reviewDecision?.finalRecommendation ?? urlRecord.recommendation ?? "")) {
+    setFinalRecommendation(
+      urlRecord.reviewDecision?.finalRecommendation ?? urlRecord.recommendation ?? ""
     );
     setReason(urlRecord.reviewDecision?.reason ?? "");
     setNotes(urlRecord.reviewDecision?.notes ?? "");
     setTargetUrl(
       urlRecord.reviewDecision?.targetUrl ?? urlRecord.suggestedTargetUrl ?? ""
     );
+    setApproved(urlRecord.reviewDecision?.approved ?? false);
   }
 
   async function handleSaveReview() {
@@ -95,10 +100,11 @@ export function UrlDetailDrawer({
     try {
       await submitReview({
         urlRecordId: urlRecord.id,
-        finalClassification,
+        finalRecommendation,
         reason: reason || undefined,
         notes: notes || undefined,
         targetUrl: targetUrl || undefined,
+        approved,
       });
       toast.success("Review saved");
       router.refresh();
@@ -144,16 +150,16 @@ export function UrlDetailDrawer({
 
             <Separator />
 
-            {/* Classification */}
+            {/* Recommendation */}
             <div>
-              <h3 className="text-sm font-semibold mb-3">Classification</h3>
+              <h3 className="text-sm font-semibold mb-3">Indexability Recommendation</h3>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Machine Classification</Label>
+                  <Label className="text-xs text-muted-foreground">Machine Recommendation</Label>
                   <div className="mt-1">
-                    {urlRecord.classification ? (
-                      <Badge className={BUCKET_COLORS[urlRecord.classification]}>
-                        {BUCKET_LABELS[urlRecord.classification]}
+                    {urlRecord.recommendation ? (
+                      <Badge className={REC_COLORS[urlRecord.recommendation] || ""}>
+                        {REC_LABELS[urlRecord.recommendation] || urlRecord.recommendation}
                       </Badge>
                     ) : (
                       <span className="text-sm text-muted-foreground">Not classified</span>
@@ -182,6 +188,14 @@ export function UrlDetailDrawer({
                     {urlRecord.pageType?.replace(/_/g, " ") ?? "—"}
                   </p>
                 </div>
+                {urlRecord.secondaryAction && (
+                  <div className="col-span-2">
+                    <Label className="text-xs text-muted-foreground">Secondary Action</Label>
+                    <p className="text-sm mt-1">
+                      {urlRecord.secondaryAction.replace(/_/g, " ")}
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -201,7 +215,7 @@ export function UrlDetailDrawer({
                 </div>
                 {urlRecord.suggestedAction && (
                   <p className="text-sm text-muted-foreground mt-2 italic">
-                    Suggested: {urlRecord.suggestedAction}
+                    {urlRecord.suggestedAction}
                   </p>
                 )}
               </div>
@@ -213,7 +227,7 @@ export function UrlDetailDrawer({
                 <h3 className="text-sm font-semibold mb-2">Review Triggers</h3>
                 <div className="space-y-1">
                   {(urlRecord.reviewTriggers as string[]).map((trigger, i) => (
-                    <p key={i} className="text-sm text-amber-700">
+                    <p key={i} className="text-sm text-gp-magenta">
                       {trigger}
                     </p>
                   ))}
@@ -232,9 +246,9 @@ export function UrlDetailDrawer({
                         {key.replace(/([A-Z])/g, " $1").trim()}
                       </span>
                       <div className="flex items-center gap-2">
-                        <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+                        <div className="w-24 h-2 bg-muted overflow-hidden">
                           <div
-                            className="h-full bg-primary rounded-full"
+                            className="h-full bg-primary"
                             style={{ width: `${value}%` }}
                           />
                         </div>
@@ -254,22 +268,26 @@ export function UrlDetailDrawer({
               <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
                 <SignalRow label="Status Code" value={urlRecord.statusCode} />
                 <SignalRow label="Indexable" value={urlRecord.isIndexable?.toString()} />
+                <SignalRow label="Meta Robots" value={(urlRecord as Record<string, unknown>).metaRobots as string} />
                 <SignalRow label="Word Count" value={urlRecord.wordCount} />
                 <SignalRow label="Clicks" value={urlRecord.clicks} />
                 <SignalRow label="Impressions" value={urlRecord.impressions} />
+                <SignalRow label="Avg Position" value={typeof urlRecord.position === "number" ? urlRecord.position.toFixed(1) : null} />
+                <SignalRow label="CTR" value={typeof urlRecord.ctr === "number" ? `${(urlRecord.ctr * 100).toFixed(2)}%` : null} />
                 <SignalRow label="Sessions" value={urlRecord.sessions} />
                 <SignalRow label="Conversions" value={urlRecord.conversions} />
                 <SignalRow label="Backlinks" value={urlRecord.backlinks} />
                 <SignalRow label="Ref. Domains" value={urlRecord.referringDomains} />
                 <SignalRow label="Internal In" value={urlRecord.internalLinksIn} />
                 <SignalRow label="Internal Out" value={urlRecord.internalLinksOut} />
-                <SignalRow label="H1" value={urlRecord.h1} />
+                <SignalRow label="GSC Matched" value={urlRecord.gscMatched?.toString()} />
               </div>
               <div className="flex gap-2 mt-3 flex-wrap">
                 {urlRecord.isOrphan && <Badge variant="outline" className="text-xs">Orphan</Badge>}
                 {urlRecord.isThinContent && <Badge variant="outline" className="text-xs">Thin</Badge>}
                 {urlRecord.missingTitle && <Badge variant="outline" className="text-xs">No Title</Badge>}
                 {urlRecord.missingH1 && <Badge variant="outline" className="text-xs">No H1</Badge>}
+                {urlRecord.gscMatched === false && <Badge variant="outline" className="text-xs">Not in GSC</Badge>}
               </div>
             </div>
 
@@ -280,33 +298,47 @@ export function UrlDetailDrawer({
               <h3 className="text-sm font-semibold mb-3">Manual Review</h3>
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Final Classification</Label>
+                  <Label className="text-xs">Final Recommendation</Label>
                   <Select
-                    value={finalClassification}
-                    onValueChange={(v) => setFinalClassification(v ?? "")}
+                    value={finalRecommendation}
+                    onValueChange={(v) => setFinalRecommendation(v ?? "")}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select classification" />
+                      <SelectValue placeholder="Select recommendation" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="keep_as_is">Keep as is</SelectItem>
-                      <SelectItem value="improve_update">Improve / Update</SelectItem>
-                      <SelectItem value="redirect_consolidate">Redirect / Consolidate</SelectItem>
-                      <SelectItem value="remove_deindex">Remove / Deindex</SelectItem>
+                      <SelectItem value="KEEP_INDEXED">Keep Indexed</SelectItem>
+                      <SelectItem value="KEEP_INDEXED_IMPROVE">Keep — Improve</SelectItem>
+                      <SelectItem value="CONSIDER_NOINDEX">Consider Noindex</SelectItem>
+                      <SelectItem value="MANUAL_REVIEW_REQUIRED">Needs More Review</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+
+                {finalRecommendation === "CONSIDER_NOINDEX" && (
+                  <div className="flex items-center gap-2 p-3 bg-gp-magenta/10 border border-gp-magenta/20">
+                    <Checkbox
+                      id="approved"
+                      checked={approved}
+                      onCheckedChange={(checked) => setApproved(checked === true)}
+                    />
+                    <Label htmlFor="approved" className="text-sm text-gp-magenta">
+                      Approve noindex for this URL
+                    </Label>
+                  </div>
+                )}
+
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Reason for override</Label>
+                  <Label className="text-xs">Reason</Label>
                   <Textarea
                     value={reason}
                     onChange={(e) => setReason(e.target.value)}
-                    placeholder="Why are you overriding the machine classification?"
+                    placeholder="Why are you setting this recommendation?"
                     rows={2}
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-xs">Redirect Target URL</Label>
+                  <Label className="text-xs">Target URL (for redirect)</Label>
                   <Input
                     value={targetUrl}
                     onChange={(e) => setTargetUrl(e.target.value)}
@@ -324,7 +356,7 @@ export function UrlDetailDrawer({
                 </div>
                 <Button
                   onClick={handleSaveReview}
-                  disabled={saving || !finalClassification}
+                  disabled={saving || !finalRecommendation}
                   className="w-full"
                 >
                   {saving ? "Saving..." : "Save Review"}

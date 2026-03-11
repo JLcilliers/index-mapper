@@ -41,20 +41,28 @@ const TRIGGER_EVALUATORS: Record<string, TriggerEvaluator> = {
   },
 
   confidence_below_threshold: () => {
-    // This is checked after confidence is calculated in the engine
-    return false; // Handled in engine.ts
+    // Checked after confidence is calculated in engine.ts
+    return false;
   },
 
   score_near_threshold: (_r, totalScore, thresholds) => {
     const margin = 5;
     return (
-      Math.abs(totalScore - thresholds.keepAsIs) <= margin ||
-      Math.abs(totalScore - thresholds.improveUpdate) <= margin ||
-      Math.abs(totalScore - thresholds.redirectConsolidate) <= margin
+      Math.abs(totalScore - thresholds.keepIndexed) <= margin ||
+      Math.abs(totalScore - thresholds.keepIndexedImprove) <= margin
     );
   },
 
   is_location_page: (r) => r.pageType === "location_page",
+
+  has_impressions_no_clicks: (r) =>
+    (r.impressions !== null && r.impressions !== undefined && r.impressions > 50) &&
+    (!r.clicks || r.clicks === 0),
+
+  service_page_low_traffic: (r) =>
+    (r.pageType === "core_service_page" || r.pageType === "service_subpage") &&
+    (!r.clicks || r.clicks < 5) &&
+    (!r.impressions || r.impressions < 100),
 };
 
 export function checkManualReviewTriggers(
